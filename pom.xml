@@ -4,12 +4,12 @@
   <parent>
     <artifactId>maven-parent-exo-pom</artifactId>
     <groupId>org.exoplatform</groupId>
-    <version>25-SNAPSHOT</version>
+    <version>26-SNAPSHOT</version>
     <relativePath />
   </parent>
   <groupId>org.exoplatform.commons</groupId>
   <artifactId>commons-exo</artifactId>
-  <version>6.4.x-SNAPSHOT</version>
+  <version>6.5.x-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>eXo PLF:: Commons</name>
   <modules>
@@ -37,7 +37,7 @@
     <!-- **************************************** -->
     <!-- Project Dependencies                     -->
     <!-- **************************************** -->
-    <org.exoplatform.gatein.portal.version>6.4.x-SNAPSHOT</org.exoplatform.gatein.portal.version>
+    <org.exoplatform.gatein.portal.version>6.5.x-SNAPSHOT</org.exoplatform.gatein.portal.version>
   
     <!-- Sonar properties -->
     <sonar.organization>exoplatform</sonar.organization>
