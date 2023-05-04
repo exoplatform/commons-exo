@@ -11,7 +11,7 @@
   <artifactId>commons-exo</artifactId>
   <version>6.5.x-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>eXo PLF:: Commons eXo Platform</name>
+  <name>eXo PLF:: eXo Platform Commons</name>
   <modules>
   </modules>
   <scm>
