@@ -4,12 +4,12 @@
   <parent>
     <artifactId>maven-exo-parent-pom</artifactId>
     <groupId>org.exoplatform</groupId>
-    <version>27-M02</version>
+    <version>27-devx-SNAPSHOT</version>
     <relativePath />
   </parent>
   <groupId>org.exoplatform.commons-exo</groupId>
   <artifactId>commons-exo</artifactId>
-  <version>6.6.x-SNAPSHOT</version>
+  <version>6.6.x-devx-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>eXo PLF:: eXo Platform Commons</name>
   <modules>
@@ -26,7 +26,7 @@
     <!-- **************************************** -->
     <!-- Project Dependencies                     -->
     <!-- **************************************** -->
-    <org.exoplatform.maven-exo-depmgt-pom.version>23.x-SNAPSHOT</org.exoplatform.maven-exo-depmgt-pom.version>
+    <org.exoplatform.maven-exo-depmgt-pom.version>23.x-devx-SNAPSHOT</org.exoplatform.maven-exo-depmgt-pom.version>
 
     <!-- Sonar properties -->
     <sonar.organization>exoplatform</sonar.organization>
