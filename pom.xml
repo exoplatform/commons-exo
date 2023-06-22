@@ -24,7 +24,7 @@
     <!-- **************************************** -->
     <!-- Project Dependencies                     -->
     <!-- **************************************** -->
-    <org.exoplatform.maven-exo-depmgt-pom.version>22.x-SNAPSHOT</org.exoplatform.maven-exo-depmgt-pom.version>
+    <org.exoplatform.maven-exo-depmgt-pom.version>22.0-20230622</org.exoplatform.maven-exo-depmgt-pom.version>
 
     <!-- Sonar properties -->
     <sonar.organization>exoplatform</sonar.organization>
