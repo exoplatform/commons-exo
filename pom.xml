@@ -13,6 +13,7 @@
   <packaging>pom</packaging>
   <name>eXo PLF:: eXo Platform Commons</name>
   <modules>
+    <module>web</module>
   </modules>
   <scm>
     <connection>scm:git:git://github.com/exoplatform/commons-exo.git</connection>
@@ -29,6 +30,7 @@
     <!-- Sonar properties -->
     <sonar.organization>exoplatform</sonar.organization>
   </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
