@@ -13,6 +13,7 @@
   <packaging>pom</packaging>
   <name>eXo PLF:: eXo Platform Commons</name>
   <modules>
+    <module>web</module>
   </modules>
   <scm>
     <connection>scm:git:git://github.com/exoplatform/commons-exo.git</connection>
@@ -29,6 +30,7 @@
     <!-- Sonar properties -->
     <sonar.organization>exoplatform</sonar.organization>
   </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -37,6 +39,30 @@
         <version>${org.exoplatform.maven-exo-depmgt-pom.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.commons-exo</groupId>
+        <artifactId>commons-exo.portal.web.eXoSkin</artifactId>
+        <version>${project.version}</version>
+        <type>war</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.commons-exo</groupId>
+        <artifactId>commons-exo.portal.web.eXoSkin</artifactId>
+        <version>${project.version}</version>
+        <classifier>sources</classifier>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.commons-exo</groupId>
+        <artifactId>commons-exo.portal.web.eXoResources</artifactId>
+        <version>${project.version}</version>
+        <type>war</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.commons-exo</groupId>
+        <artifactId>commons-exo.portal.web.eXoResources</artifactId>
+        <version>${project.version}</version>
+        <classifier>sources</classifier>
       </dependency>
     </dependencies>
   </dependencyManagement>
