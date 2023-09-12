@@ -13,6 +13,7 @@
   <packaging>pom</packaging>
   <name>eXo PLF:: eXo Platform Commons</name>
   <modules>
+    <module>commons-juzu</module>
     <module>web</module>
   </modules>
   <scm>
@@ -40,6 +41,11 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+      <groupId>org.exoplatform.commons-exo</groupId>
+      <artifactId>commons-juzu</artifactId>
+      <version>${project.version}</version>
+    </dependency>
       <dependency>
         <groupId>org.exoplatform.commons-exo</groupId>
         <artifactId>commons-exo.portal.web.eXoSkin</artifactId>
