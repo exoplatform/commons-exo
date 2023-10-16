@@ -15,6 +15,7 @@
   <modules>
     <module>commons-juzu</module>
     <module>web</module>
+    <module>commons-exo-extension</module>
   </modules>
   <scm>
     <connection>scm:git:git://github.com/exoplatform/commons-exo.git</connection>
@@ -67,6 +68,12 @@
       <dependency>
         <groupId>org.exoplatform.commons-exo</groupId>
         <artifactId>commons-exo.portal.web.eXoResources</artifactId>
+        <version>${project.version}</version>
+        <classifier>sources</classifier>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.commons-exo</groupId>
+        <artifactId>commons-exo-extension</artifactId>
         <version>${project.version}</version>
         <classifier>sources</classifier>
       </dependency>
