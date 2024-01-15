@@ -991,5 +991,14 @@
       <module>jq_perfect_scrollbar</module>
     </depends>
   </module>
+  <module>
+    <name>filedrop</name>
+    <script>
+      <path>/javascript/lib/jquery.filedrop.js</path>
+    </script>
+    <depends>
+      <module>jquery</module>
+    </depends>
+  </module>
 
 </gatein-resources>
