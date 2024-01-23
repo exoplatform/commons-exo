@@ -992,7 +992,7 @@
     </depends>
   </module>
   <module>
-    <name>filedrop</name>
+    <name>file_drop</name>
     <script>
       <path>/javascript/lib/jquery.filedrop.js</path>
     </script>
