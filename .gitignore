@@ -34,6 +34,11 @@ pom.xml.versionsBackup
 # OS
 .DS_Store
 
+# Webpack
+node/
+node_modules/
+etc/
+
 # Misc
 *.swp
 transaction.log
