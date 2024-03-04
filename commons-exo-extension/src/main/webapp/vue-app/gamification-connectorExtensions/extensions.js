@@ -16,7 +16,6 @@
  */
 
 export function init() {
-  console.log('test');
   extensionRegistry.registerExtension('engagementCenterConnectors', 'connector-extensions', {
     id: 'exoplatform',
     name: 'exoplatform',
