@@ -1,5 +1,5 @@
 {
-  "name": "meeds-gamification-github",
+  "name": "commons-exo",
   "description": "Exoplatform Commons Exo",
   "scripts": {
     "watch": "webpack --config webpack.watch.js --progress --color --watch",
