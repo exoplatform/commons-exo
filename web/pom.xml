@@ -26,7 +26,7 @@
   <parent>
     <groupId>org.exoplatform.commons-exo</groupId>
     <artifactId>commons-exo</artifactId>
-    <version>6.6.0-20240318</version>
+    <version>6.6.x-SNAPSHOT</version>
   </parent>
 
   <artifactId>commons-exo.portal.web</artifactId>
