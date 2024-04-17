@@ -73,7 +73,7 @@
 	    }
 	    else
 	    {
-	      return $("#" + ids[0]).find("#" + ids[1])[0];
+	      return $("#" + ids[0]).find("#" + ids[1])[0] || $("#UIPortlet-" + ids[0]).find("#" + ids[1])[0];
 	    }
 	  },
 	
