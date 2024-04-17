@@ -24,26 +24,42 @@
    * This is the main entry method for every Ajax calls to the eXo Portal
    * 
    * It is simply a dispatcher method that fills some init fields before calling
-   * the doRequest() method
+   * the window.doRequest() method
    */
   window.ajaxGet = function(url, callback) {
     if (!callback)
       callback = null;
-    require([ "SHARED/portalRequest" ], function() {
-      doRequest("Get", url, null, callback);
+   window.require([ "SHARED/portalRequest" ], function() {
+      if (window.eXo.env.portal.maximizedPortletMode) {
+        if (url.includes('?')) {
+          url += '&';
+        } else {
+          url += '?';
+        }
+        url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
+      }
+      window.doRequest("Get", url, null, callback);
     });
   };
   
   /**
    * Do a POST request in AJAX with given <code>url</code> and
-   * <code>queryString</code>. The call is delegated to the doRequest() method
+   * <code>queryString</code>. The call is delegated to the window.doRequest() method
    * with a callback function
    */
   window.ajaxPost = function(url, queryString, callback) {
     if (!callback)
       callback = null;
-    require([ "SHARED/portalRequest" ], function() {
-      doRequest("POST", url, queryString, callback);
+   window.require([ "SHARED/portalRequest" ], function() {
+      if (window.eXo.env.portal.maximizedPortletMode) {
+        if (url.includes('?')) {
+          url += '&';
+        } else {
+          url += '?';
+        }
+        url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
+      }
+      window.doRequest("POST", url, queryString, callback);
     });
   };
   

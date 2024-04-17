@@ -564,7 +564,13 @@
         return;
       var parentBlock = null;
       if (parentId && parentId != "") {
-        parentBlock = $("#" + parentId);
+        const selector = window.eXo.env.portal.maximizedPortletMode ?
+          `#${parentId}[data-mode='${window.eXo.env.portal.maximizedPortletMode}']`
+          : `#${parentId}`;
+        parentBlock = $(selector);
+        if (!parentBlock.length && window.eXo.env.portal.maximizedPortletMode) {
+          parentBlock = $(`#${parentId}`);
+        }
 
         // Workaround: In the case of the Portlet is being rendered/displayed in
         // Edit Layout mode
@@ -660,10 +666,11 @@
                  * any finer block to update. Hence replace the innerHTML inside
                  * the id="PORTLET-FRAGMENT" block
                  */
-                var parentBlock = $("#" + portletResponse.portletId);
-                var target = $(
-                    "#" + portletResponse.portletId + " .PORTLET-FRAGMENT")
-                    .first();
+                const portletSelector = window.eXo.env.portal.maximizedPortletMode ?
+                  `#${portletResponse.portletId}[data-mode='${window.eXo.env.portal.maximizedPortletMode}']`
+                  : `#${portletResponse.portletId}`;
+                var parentBlock = $(portletSelector);
+                var target = $(`${portletSelector} .PORTLET-FRAGMENT`).first();
                 target.html(portletResponse.portletData);
 
                 // update embedded scripts
@@ -678,8 +685,7 @@
                 /*
                  * Else updates each block with the portlet
                  */
-                instance.updateBlocks(portletResponse.blocksToUpdate,
-                    portletResponse.portletId);
+                instance.updateBlocks(portletResponse.blocksToUpdate, portletResponse.portletId);
               }
             });
       }
