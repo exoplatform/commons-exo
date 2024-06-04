@@ -62,14 +62,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     <css-priority>-1</css-priority>
   </portal-skin>
 
-  <!-- ApplicationRegistryPortlet skins -->
-  <portlet-skin>
-    <application-name>exoadmin</application-name>
-    <portlet-name>ApplicationRegistryPortlet</portlet-name>
-    <skin-name>${exo.skin.name}</skin-name>
-    <css-path>/skin/css/Portlets/UIApplicationRegistryPortlet/Style.css</css-path>
-  </portlet-skin>
-
   <!-- Platform - software registration skins -->
   <portlet-skin>
     <application-name>portal</application-name>
