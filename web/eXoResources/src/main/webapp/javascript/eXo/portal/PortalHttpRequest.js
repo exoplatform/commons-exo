@@ -772,7 +772,6 @@
     request.callBack = callback;
     eXo.portal.CurrentRequest = request;
     request.process();
-    eXo.session.startItv();
   }
 
   /**
@@ -828,7 +827,6 @@
         resp = jqXHR.responseText;
       }
     });
-    eXo.session.startItv();
     if (!async)
       return resp;
   }
