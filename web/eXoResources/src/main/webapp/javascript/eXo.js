@@ -62,6 +62,22 @@ window.ajaxGet = function(url, callback) {
 window.ajaxPost = function(url, queryString, callback) {
   if (!callback)
     callback = null;
+  if (window.eXo.env.portal.maximizedPortletMode) {
+    if (url.includes('?')) {
+      url += '&';
+    } else {
+      url += '?';
+    }
+    url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
+  }
+  if (window.eXo.env.portal.portletInstanceId) {
+    if (url.includes('?')) {
+      url += '&';
+    } else {
+      url += '?';
+    }
+    url += `portletInstanceId=${window.eXo.env.portal.portletInstanceId}`;
+  }
   require([ "SHARED/portalRequest" ], function() {
     doRequest("POST", url, queryString, callback);
   });
@@ -72,6 +88,23 @@ eXo.env.server.createPortalURL = function(targetComponentId, actionName,
   var url = eXo.env.server.portalURLTemplate.replace("_portal:componentId_",
       targetComponentId);
   url = url.replace("_portal:action_", actionName);
+
+  if (window.eXo.env.portal.maximizedPortletMode) {
+    if (url.includes('?')) {
+      url += '&';
+    } else {
+      url += '?';
+    }
+    url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
+  }
+  if (window.eXo.env.portal.portletInstanceId) {
+    if (url.includes('?')) {
+      url += '&';
+    } else {
+      url += '?';
+    }
+    url += `portletInstanceId=${window.eXo.env.portal.portletInstanceId}`;
+  }
 
   if (params != null) {
     var len = params.length;

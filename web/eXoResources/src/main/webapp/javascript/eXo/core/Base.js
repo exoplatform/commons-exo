@@ -38,6 +38,14 @@
         }
         url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
       }
+      if (window.eXo.env.portal.portletInstanceId) {
+        if (url.includes('?')) {
+          url += '&';
+        } else {
+          url += '?';
+        }
+        url += `portletInstanceId=${window.eXo.env.portal.portletInstanceId}`;
+      }
       window.doRequest("Get", url, null, callback);
     });
   };
@@ -59,6 +67,14 @@
         }
         url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
       }
+      if (window.eXo.env.portal.portletInstanceId) {
+        if (url.includes('?')) {
+          url += '&';
+        } else {
+          url += '?';
+        }
+        url += `portletInstanceId=${window.eXo.env.portal.portletInstanceId}`;
+      }
       window.doRequest("POST", url, queryString, callback);
     });
   };
@@ -68,7 +84,24 @@
     var url = eXo.env.server.portalURLTemplate.replace("_portal:componentId_",
         targetComponentId);
     url = url.replace("_portal:action_", actionName);
-  
+
+    if (window.eXo.env.portal.maximizedPortletMode) {
+      if (url.includes('?')) {
+        url += '&';
+      } else {
+        url += '?';
+      }
+      url += `maximizedPortletMode=${window.eXo.env.portal.maximizedPortletMode}`;
+    }
+    if (window.eXo.env.portal.portletInstanceId) {
+      if (url.includes('?')) {
+        url += '&';
+      } else {
+        url += '?';
+      }
+      url += `portletInstanceId=${window.eXo.env.portal.portletInstanceId}`;
+    }
+
     if (params != null) {
       var len = params.length;
       for (var i = 0; i < len; i++) {
@@ -93,56 +126,6 @@
 		window.dispatchEvent(logoutEvent);
 		// Perform logout
 		window.location = eXo.env.server.createPortalURL("UIPortal", "Logout", false) ;
-	} ;
-	
-	eXo.session.openUrl = null ;
-	eXo.session.itvTime = null ;
-	eXo.session.itvObj = null;
-	eXo.session.initialized = false;
-	
-	eXo.session.itvInit = function() {
-	   var session = eXo.session, env = eXo.env;
-	   if (!session.initialized && session.canKeepState && env.portal.accessMode == 'private') {
-	      if (!session.openUrl) session.openUrl = env.server.createPortalURL("UIPortal", "Ping", false) ;
-	      if (!session.itvTime) session.itvTime = 1800;
-	      session.initialized = true;
-	      session.openItv();
-	   }
-	} ;
-	
-	eXo.session.startItv = function() {
-	   var session = eXo.session;
-	   if (session.initialized) {
-	      session.destroyItv();
-	      if (session.canKeepState && eXo.env.portal.accessMode == 'private') {
-	         if (session.itvTime > 0) session.itvObj = window.setTimeout("eXo.session.openItv()", (session.itvTime - 10) * 1000) ;
-	      }
-	   } else if (session.isOpen) {
-	      session.itvInit();
-	   }
-	} ;
-	
-	eXo.session.openItv = function() {
-		var session = eXo.session;
-		var request = window.ActiveXObject ? new ActiveXObject( "Msxml2.XMLHTTP" ) : new XMLHttpRequest();
-		request.open("GET", session.openUrl, true);
-		request.setRequestHeader("Cache-Control", "max-age=86400");
-		request.onreadystatechange = function() {
-			if (request.readyState == 4) { 
-				if (request.status == 200) {
-					var result = request.responseText;
-					if(!isNaN(result)) session.itvTime = parseInt(result); 				
-				}
-				delete request['onreadystatechange'];
-			}
-		}
-		request.send(null);
-	} ;
-	
-	eXo.session.destroyItv = function () {
-	   var session = eXo.session;
-	   window.clearTimeout(session.itvObj) ;
-	   session.itvObj = null ;
 	} ;
 	
 	/**
