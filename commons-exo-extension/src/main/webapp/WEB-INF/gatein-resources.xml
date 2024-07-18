@@ -30,4 +30,15 @@
       <module>eXoVueI18n</module>
     </depends>
   </module>
+  <module>
+    <name>WYSIWYGPluginsExtensions</name>
+    <load-group>NotesEditorGRP</load-group>
+    <script>
+      <minify>false</minify>
+      <path>/js/WYSIWYGPluginsExtensions.bundle.js</path>
+    </script>
+    <depends>
+      <module>extensionRegistry</module>
+    </depends>
+  </module>
 </gatein-resources>
