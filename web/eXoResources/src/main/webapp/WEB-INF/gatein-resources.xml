@@ -48,7 +48,7 @@
       <module>uiMaskLayer</module>
     </depends>
     <depends>
-      <module>I18NMessage</module>
+      <module>exoi18n</module>
     </depends>
     <depends>
       <module>base</module>
@@ -147,7 +147,7 @@
       <module>jquery</module>
     </depends>
     <depends>
-      <module>I18NMessage</module>
+      <module>exoi18n</module>
     </depends>
     <depends>
       <module>bts_tooltip</module>
@@ -655,16 +655,17 @@
       <path>/javascript/eXo/webui/UICalendar.js</path>
     </script>
     <depends>
-      <module>common</module>
+      <module>jquery</module>
     </depends>
     <depends>
       <module>base</module>
     </depends>
     <depends>
-      <module>jquery</module>
+      <module>common</module>
     </depends>
     <depends>
-      <module>I18NMessage</module>
+      <module>eXoVueI18n</module>
+      <as>msg</as>
     </depends>
   </module>
 
