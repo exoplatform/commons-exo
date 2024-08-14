@@ -45,13 +45,14 @@
       <module>jquery</module>
     </depends>
     <depends>
+      <module>base</module>
+    </depends>
+    <depends>
       <module>uiMaskLayer</module>
     </depends>
     <depends>
-      <module>exoi18n</module>
-    </depends>
-    <depends>
-      <module>base</module>
+      <module>eXoVueI18n</module>
+      <as>msg</as>
     </depends>
   </module>
 
@@ -141,16 +142,14 @@
       <path>/javascript/eXo/portal/UIPortal.js</path>
     </script>
     <depends>
-      <module>base</module>
-    </depends>
-    <depends>
       <module>jquery</module>
     </depends>
     <depends>
-      <module>exoi18n</module>
+      <module>base</module>
     </depends>
     <depends>
-      <module>bts_tooltip</module>
+      <module>eXoVueI18n</module>
+      <as>msg</as>
     </depends>
   </module>
 
