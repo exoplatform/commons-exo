@@ -507,14 +507,6 @@
   </module>
 
   <module>
-    <name>commons-CssIconFile</name>
-    <as>ckeditor</as>
-    <script>
-      <path>/javascript/core/CssClassIconFile.js</path>
-    </script>
-  </module>
-
-  <module>
     <name>vueEllipsis</name>
     <script>
       <path>/javascript/vue-ellipsis.min.js</path>
@@ -651,29 +643,6 @@
     </script>
     <depends>
       <module>promisePolyfill</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>commons-document</name>
-    <as>doc</as>
-    <script>
-      <path>/javascript/eXo/commons/commons-Document.js</path>
-    </script>
-    <depends>
-      <module>commons-CssIconFile</module>
-      <as>CssIconFile</as>
-    </depends>
-    <depends>
-      <module>bts_tooltip</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-      <as>jQuery</as>
-    </depends>
-    <depends>
-      <module>base</module>
-      <as>gtnbase</as>
     </depends>
   </module>
 
