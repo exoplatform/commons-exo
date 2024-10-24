@@ -33,7 +33,7 @@ import org.exoplatform.webui.core.model.SelectItemOption;
     "    <access-permissions>Everyone</access-permissions>\n" +
     "    <portlet-application>\n" +
     "      <portlet>\n" +
-    "        <application-ref>social-portlet</application-ref>\n" +
+    "        <application-ref>social</application-ref>\n" +
     "        <portlet-ref>TopBarLogo</portlet-ref>\n" +
     "      </portlet>\n" +
     "      <title>Company Logo</title>\n" +
@@ -55,7 +55,7 @@ import org.exoplatform.webui.core.model.SelectItemOption;
     "  <container id=\"middle-topBar-container\" template=\"system:/groovy/portal/webui/container/UIContainer.gtmpl\">\n" +
     "    <portlet-application>\n" +
     "      <portlet>\n" +
-    "        <application-ref>social-portlet</application-ref>\n" +
+    "        <application-ref>social</application-ref>\n" +
     "        <portlet-ref>TopBarMenu</portlet-ref>\n" +
     "      </portlet>\n" +
     "      <title>Top Bar Menu </title>\n" +
