@@ -15,6 +15,9 @@
   <modules>
     <module>web</module>
     <module>commons-exo-extension</module>
+    <module>exo.kernel.component.command</module>
+    <module>exo.kernel.component.ext.cache.impl.infinispan.v8</module>
+    <module>exo.core.component.database</module>
   </modules>
   <scm>
     <connection>scm:git:git://github.com/exoplatform/commons-exo.git</connection>
@@ -42,40 +45,55 @@
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo.portal.web.eXoSkin</artifactId>
         <version>${project.version}</version>
         <type>war</type>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo.portal.web.eXoSkin</artifactId>
         <version>${project.version}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo.portal.web.eXoResources</artifactId>
         <version>${project.version}</version>
         <type>war</type>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo.portal.web.eXoResources</artifactId>
         <version>${project.version}</version>
         <classifier>sources</classifier>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo-extension</artifactId>
         <version>${project.version}</version>
         <type>war</type>
       </dependency>
       <dependency>
-        <groupId>org.exoplatform.commons-exo</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>commons-exo-extension</artifactId>
         <version>${project.version}</version>
         <classifier>sources</classifier>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>exo.kernel.component.ext.cache.impl.infinispan.v8</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>exo.core.component.database</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>exo.kernel.component.command</artifactId>
+        <version>${project.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
