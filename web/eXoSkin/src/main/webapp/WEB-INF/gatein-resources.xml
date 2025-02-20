@@ -29,23 +29,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   <portal-skin>
     <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>commons</skin-module>
-    <css-path>/skin/css/commons/skin/commons.css</css-path>
-    <css-priority>1</css-priority>
-  </portal-skin>
-
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
     <skin-module>Social</skin-module>
     <css-path>/skin/css/social/skin/social.css</css-path>
     <css-priority>3</css-priority>
-  </portal-skin>
-
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>Platform-css</skin-module>
-    <css-path>/skin/css/platform/skin/platform.css</css-path>
-    <css-priority>4</css-priority>
   </portal-skin>
 
   <portal-skin>
@@ -61,16 +47,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     <css-path>/skin/css/customStyle.css</css-path>
     <css-priority>-1</css-priority>
   </portal-skin>
-  
-  <!-- Platform - welcome screens skins -->
-  <portlet-skin>
-    <application-name>portal</application-name>
-    <portlet-name>Conditions</portlet-name>
-    <skin-name>${exo.skin.name}</skin-name>
-    <css-path>/skin/css/platform/portlets/welcome-screens/termsAndConditions/style.css</css-path>
-  </portlet-skin>
-  
-  <portlet-skin>
+
+   <portlet-skin>
     <application-name>trial</application-name>
     <portlet-name>UnlockTrial</portlet-name>
     <skin-name>${exo.skin.name}</skin-name>
