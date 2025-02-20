@@ -57,14 +57,6 @@
   </module>
 
   <module>
-    <name>skin</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/core/Skin.js</path>
-    </script>
-  </module>
-
-  <module>
     <name>uiPopup</name>
     <load-group>baseGRP</load-group>
     <script>
@@ -95,149 +87,11 @@
     </depends>
   </module>
 
-  <module>
-    <name>uiMaskWorkspace</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIMaskWorkspace.js</path>
-    </script>
-    <depends>
-      <module>uiMaskLayer</module>
-    </depends>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>popupCategory</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIPopupSelectCategory.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- CORE Javascripts -->
   <module>
     <name>common</name>
     <script>
       <path>/javascript/eXo/core/DragDrop.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Portal Javascripts -->
-  <module>
-    <name>portal</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIPortal.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>eXoVueI18n</module>
-      <as>msg</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>portalComposer</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/PortalComposer.js</path>
-    </script>
-    <depends>
-      <module>portalControl</module>
-    </depends>
-    <depends>
-      <module>portalDragDrop</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-    <depends>
-      <module>bts_tooltip</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>portalDragDrop</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/PortalDragDrop.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>common</module>
-    </depends>
-  </module>
-
-  <!-- WebUI Javascripts -->
-  <module>
-    <name>portalControl</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIPortalControl.js</path>
-    </script>
-    <depends>
-      <module>uiForm</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>selectors</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/Selectors.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>uiForm</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIForm.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>formValidation</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/FormValidation.js</path>
     </script>
     <depends>
       <module>jquery</module>
@@ -284,24 +138,6 @@
     </depends>
   </module>
 
-  <!-- JQuery perfect scrollbar plugin -->
-  <module>
-    <name>jq_perfect_scrollbar</name>
-    <load-group>webuiExt</load-group>
-    <script>
-      <adapter>
-        (function($) {
-          var _$ = window.jQuery; window.jQuery = $;
-          <include>/javascript/perfect-scrollbar.jquery.min.js</include>
-          window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- IphoneStyle plugin -->
   <module>
     <name>iphoneStyleCheckbox</name>
@@ -332,12 +168,6 @@
     </depends>
     <depends>
       <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalControl</module>
-    </depends>
-    <depends>
-      <module>uiRightClickPopupMenu</module>
     </depends>
   </module>
 
@@ -429,23 +259,6 @@
   </module>
 
   <module>
-    <name>uiRightClickPopupMenu</name>
-    <load-group>webuiExtGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIRightClickPopupMenu.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>uiPopup</module>
-    </depends>
-  </module>
-
-  <module>
     <name>uiVirtualList</name>
     <load-group>webuiExtGRP</load-group>
     <script>
@@ -468,52 +281,13 @@
     </depends>
   </module>
 
-  <module>
-    <name>navigation</name>
-    <script>
-      <path>/javascript/eXo/portal/UIPortalNavigation.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>uiPopup</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Container Javascript -->
-  <module>
-    <name>toggleContainer</name>
-    <script>
-      <path>/javascript/eXo/portal/ToggleContainer.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <module>
     <name>qrcode</name>
     <script>
       <minify>false</minify>
       <path>/javascript/easy.qrcode.min.js</path>
     </script>
-  </module>
-
-  <module>
-    <name>vueEllipsis</name>
-    <script>
-      <path>/javascript/vue-ellipsis.min.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
   </module>
 
   <module>
@@ -534,147 +308,11 @@
   </module>
 
   <module>
-    <name>user-profile</name>
-    <as>userProfile</as>
-    <script>
-      <path>/javascript/eXo/social/UIUserProfile.js</path>
-    </script>
-    <depends>
-      <module>socialUtil</module>
-      <as>socialUtil</as>
-    </depends>
-    <depends>
-      <module>social-ui-profile</module>
-      <as>socialUIProfile</as>
-    </depends>
-    <depends>
-      <module>jquery</module>
-      <as>jQuery</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>social-ui-profile</name>
-    <as>socialUiProfile</as>
-    <script>
-      <path>/javascript/eXo/social/UIProfile.js</path>
-    </script>
-    <depends>
-      <module>socialUtil</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-      <as>$</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>socialPlugin</name>
-    <script>
-      <path>/javascript/eXo/social/Util.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>jQuery</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>socialUtil</name>
-    <script>
-      <path>/javascript/eXo/social/SocialUtil.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>gj</as>
-    </depends>
-    <depends>
-      <module>uiMaskLayer</module>
-    </depends>
-    <depends>
-      <module>uiPopupWindow</module>
-      <as>popupWindow</as>
-    </depends>
-  </module>
-  <module>
-    <name>userInvitation</name>
-    <script>
-      <path>/javascript/eXo/social/UIUserInvitation.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>suggester</module>
-    </depends>
-  </module>
-  <module>
-    <name>es6promise</name>
-    <script>
-      <path>/javascript/eXo/polyfill/es6-promise.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>customEventPolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/custom-event-polyfill.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>iePolyfills</name>
-    <script>
-      <path>/javascript/eXo/polyfill/ie-polyfills.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>promisePolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/promise.min.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>fetchPolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/fetch.js</path>
-    </script>
-    <depends>
-      <module>promisePolyfill</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>UISpaceSwitcher</name>
-    <script>
-      <path>/javascript/eXo/commons/UISpaceSwitcher.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>jQuery</as>
-    </depends>
-  </module>
-
-  <module>
     <name>xss-utils</name>
     <as>XSSUtils</as>
     <script>
       <path>/javascript/eXo/commons/XSSUtils.js</path>
     </script>
-  </module>
-
-  <module>
-    <name>mask-layer</name>
-    <as>mask_layer</as>
-    <script>
-      <path>/javascript/eXo/commons/MaskLayerControl.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>gj</as>
-    </depends>
   </module>
 
   <module>
@@ -690,36 +328,6 @@
     </depends>
   </module>
 
-  <module>
-    <name>common-utils</name>
-    <as>common_utils</as>
-    <script>
-      <path>/javascript/eXo/commons/Utils.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>jQuery</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>platform-responsive</name>
-    <as>platformResponsive</as>
-    <script>
-      <path>/javascript/eXo/responsive/responsive.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-      <as>$</as>
-    </depends>
-    <depends>
-      <module>common-utils</module>
-      <as>common_utils</as>
-    </depends>
-    <depends>
-      <module>jq_perfect_scrollbar</module>
-    </depends>
-  </module>
   <module>
     <name>file_drop</name>
     <script>

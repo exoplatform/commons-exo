@@ -26,13 +26,13 @@ init : function(field, isDisplayTime) {
   UIDateTimePicker.show() ;
 
   // fix bug for IE 6
-  var cld = document.getElementById(UIDateTimePicker.calendarId);  
+  var cld = document.getElementById(UIDateTimePicker.calendarId);
   field.parentNode.insertBefore(cld, field) ;
 },
 
 show : function() {
   gj(document).off('mousedown.calendar').on('mousedown.calendar', new Function('eXo.UIDateTimePicker.hide()'));
-  
+
   var str = UIDateTimePicker.dateField.getAttribute("format") ;
   str = str.replace(/d{2}/,"(\\d{1,2}\\") ;
   str = str.replace(/M{2}/,"\\d{1,2}\\") ;
@@ -41,7 +41,7 @@ show : function() {
     str = str.replace(/\s+/,"\\s*") ;
     str = str.replace(/H{2}/,"(\\d{1,2}\\") ;
     str = str.replace(/m{2}/,"\\d{1,2}\\") ;
-    str = str.replace(/s{2}/,"\\d{1,2})") ;    
+    str = str.replace(/s{2}/,"\\d{1,2})") ;
   }
   str = "^" + str + "?$" ;
   re = new RegExp(str,'i') ;
@@ -55,20 +55,20 @@ show : function() {
     var date = 0 ;
     switch(type) {
       case 0 :
-      case 1 : 
+      case 1 :
         date = arr[0] ;
         month = arr[1] ;
       break ;
       case 2 :
-      case 3 : 
+      case 3 :
         date = arr[1] ;
         month = arr[0] ;
       break ;
-      default : 
+      default :
         date = arr[0] ;
         month = arr[1] ;
     }
-    
+
     // See PLF-8195, in case date is 31 but current selected month date is 30,
     // the month value will be incremented automatically, thus we reset here the date to 1
     UIDateTimePicker.selectedDate.setDate(1);
@@ -84,7 +84,7 @@ show : function() {
       UIDateTimePicker.selectedDate.setSeconds(arr[2], 10) ;
     }
   }
-  
+
   UIDateTimePicker.currentDate = new Date(UIDateTimePicker.selectedDate.getTime()) ;
   var clndr = document.getElementById(UIDateTimePicker.calendarId) ;
   clndr.firstChild.lastChild.innerHTML = UIDateTimePicker.renderCalendar() ;
@@ -133,7 +133,7 @@ setDate : function(year, month, day) {
     } else {
       dateString = dateString.split(' ')[0];
     }
-    
+
     UIDateTimePicker.dateField.value = dateString ;
     var callback = UIDateTimePicker.listeners['setDate'];
     if (callback && typeof callback === "function") {
@@ -156,10 +156,10 @@ renderCalendar : function() {
   table += '<span>'+ UIDateTimePicker.months[UIDateTimePicker.currentDate.getMonth()] +', '+ UIDateTimePicker.currentDate.getFullYear() + '</span>';
   table += '<a data-placement="right" rel="tooltip" onclick="eXo.UIDateTimePicker.changeMonth(1);" class="actionIcon pull-right" data-original-title="'+ UIDateTimePicker.tooltip[2]+ '"><i class="uiIconMiniArrowRight uiIconLightGray"></i></a>';
   table += '</h5>';
-  
+
   table += '<table class="weekList">';
-  table += '  <tr>';  
-  table +=    '       <td><font color="red">' + UIDateTimePicker.weekdays[0] + '</font></td><td>' + UIDateTimePicker.weekdays[1] + '</td><td>' + UIDateTimePicker.weekdays[2] + '</td><td>' + UIDateTimePicker.weekdays[3] + '</td><td>' + UIDateTimePicker.weekdays[4] + '</td><td>' + UIDateTimePicker.weekdays[5] + '</td><td>' + UIDateTimePicker.weekdays[6] + '</td>' ;  
+  table += '  <tr>';
+  table +=    '       <td><font color="red">' + UIDateTimePicker.weekdays[0] + '</font></td><td>' + UIDateTimePicker.weekdays[1] + '</td><td>' + UIDateTimePicker.weekdays[2] + '</td><td>' + UIDateTimePicker.weekdays[3] + '</td><td>' + UIDateTimePicker.weekdays[4] + '</td><td>' + UIDateTimePicker.weekdays[5] + '</td><td>' + UIDateTimePicker.weekdays[6] + '</td>' ;
   table += '  </tr>';
   table += '</table>';
   table += '<hr>';
@@ -171,11 +171,11 @@ var _pyear, _pmonth, _pday, _nyear, _nmonth, _nday, _weekend;
     _pyear = (UIDateTimePicker.currentDate.getMonth() == 0) ? UIDateTimePicker.currentDate.getFullYear() - 1 : UIDateTimePicker.currentDate.getFullYear();
     _pmonth = (UIDateTimePicker.currentDate.getMonth() == 0) ? 11 : UIDateTimePicker.currentDate.getMonth() - 1;
     _pday = UIDateTimePicker.getDaysInMonth(_pyear, _pmonth) - ((startDayOfWeek + ((8 - UIDateTimePicker.firstDayOfWeek) % 7)) % 7) + 1;
-    
+
     _nmonth = (UIDateTimePicker.currentDate.getMonth() == 11) ? 0 : UIDateTimePicker.currentDate.getMonth() + 1;
     _nyear = (UIDateTimePicker.currentDate.getMonth() == 11) ? UIDateTimePicker.currentDate.getFullYear() + 1 : UIDateTimePicker.currentDate.getFullYear();
     _nday = 1;
-    
+
     table += '<table cellspacing="0" cellpadding="0" id="" class="weekDays">';
       for ( var week = 0; week < 6; week++) {
       tableRow += '<tr {{week'+week+'}}>';
@@ -227,7 +227,7 @@ var _pyear, _pmonth, _pday, _nyear, _nmonth, _nday, _weekend;
       }
       table += tableRow + '</table>';
 
- 
+
   table +=    '</div>' ;
   return table ;
 },
