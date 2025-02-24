@@ -26,28 +26,10 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   font-family: 'PLF-FONT-ICONS' !important;
   font-weight: normal;
 }
-.uiIconAppAnswersPortlet:before {
-  content: "\e68b";
-  font-family: 'PLF-FONT-ICONS' !important;
-  font-weight: normal;
-}
-.uiIconAppFAQPortlet:before {
-  content: "\e68f";
-  font-family: 'PLF-FONT-ICONS' !important;
-  font-weight: normal;
-}
-.uiIconAppFileExplorerPortlet:before, .uiIconAppdocuments:before {
+.uiIconAppdocuments:before {
   content: "\e68e";
   font-family: 'PLF-FONT-ICONS' !important;
   font-weight: normal;
-}
-.uiIconStarBlank:before {
-  font-family: IONIC-FONT;
-  content: "\f3ae";
-}
-.uiIconMyWiki:before, .uiIconWikiMyWiki:before {
-  content: "\f3e7";
-  font-family: IONIC-FONT;
 }
 .uiIconWikiWiki:before {
   font-family: IONIC-FONT;
@@ -59,62 +41,11 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   font-family: IONIC-FONT;
   font-size: 16px;
 }
-.uiIconPLFDashboard:before {
-  content: "\f3c2";
-  font-family: IONIC-FONT;
-}
-.uiIconPLFEventTask:before {
-  /*content: "\e6d0";*/
-  font-family: IONIC-FONT;
-  content: "\f117";
-}
-.uiIconPLFLogout:before {
-  content: "\f29f";
-  font-family: IONIC-FONT;
-}
-.uiIconPLFActivityStream:before {
-  font-family: IONIC-FONT;
-  content: "\f2b5";
-}
-.uiIconPLFProfile:before {
-  font-family: IONIC-FONT;
-  content: "\f391";
-}
-.uiIconFlags:before {
-  content: "\f279";
-  font-family: IONIC-FONT;
-}
-.uiIconForward:before {
-  font-family: IONIC-FONT;
-  content: "\f21d";
-}
-.uiIconReply:before {
-  font-family: IONIC-FONT;
-  content: "\f21e";
-}
-.uiIconLink:before, .uiIconPermalink:before, .uiIconLinkr:before {
-  font-family: IONIC-FONT;
-  content: "\f1fe";
-}
 .uiIconRefresh:before {
   font-family: IONIC-FONT;
   content: "\f21c";
   color: @uiIconRefreshColor;
 }
-.uiIconExt-downloads:before {
-  content: "\f407";
-  font-family: IONIC-FONT;
-}
-.uiIconForum:before,
-.uiIconUIForms:before {
-  content: "\f3f9"!important;
-  font-family: IONIC-FONT;
-  font-size: 16px;
-}
-.uiIconExt-discover:before,.uiIconPlay:before{content: "\f4cc";font-family: IONIC-FONT;}
-.uiIconExt-documentation:before ,.useful-icon-Doc:before{content: "\f3e9";font-family: IONIC-FONT;}
-.uiIconExt-add-ons:before ,.useful-icon-addon:before{content: "\f228";font-family: IONIC-FONT;}
-.uiIconExt-feature-requests:before ,.uiIconIdeas:before{content: "\f451";font-family: IONIC-FONT;}
 .uiIconArrowDownMini:before ,.uiIconMiniArrowDown:before{
   color: #5b6272;
 }
@@ -124,58 +55,15 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   content: "\f373";
   font-size: 16px;
 }
-.uiIconPLF24x24Setting:before,
 .uiIconPLF24x24Setup:before {
   /*content: "\e78b";*/
   font-family: IONIC-FONT;
   content: "\f13e";
 }
-
-.uiIconPLF24x24Help:before {
-  /*content: "\e76b";*/
-  font-family: IONIC-FONT;
-  content: "\f142";
-}
-
-.uiIconPLF24x24Bell:before {
-  /*content: "\e73a";*/
-  font-family: IONIC-FONT;
-  content: "\f39b";
-}
-
-.uiIconPLFMyConnection:before {
-  content: "\f212";
-  font-family: IONIC-FONT;
-  .navItem &{content: "\f47b";font-size: 16px;}
-  .navItemSelected &{content: "\f47b";font-size: 16px;}
-}
-
-.uiIconPLFCalendar:before {
-  content: "\f3f4";
-  font-family: IONIC-FONT;
-  .navItem &{content: "\f3f3";font-size: 16px;}
-  .navItemSelected &{content: "\f3f3";font-size: 16px;}
-}
-
-.uiIconPLFDocuments:before {
-  content: "\f435";
-  font-size: 16px;
-  font-family: IONIC-FONT;
-  .navItem &{content: "\f434";font-size: 16px;}
-  .navItemSelected &{content: "\f434";}
-}
-
-
 .uiIconPLFNotifications:before {
   font-family: IONIC-FONT;
   content: "\f39b";
 }
-.uiIconPLF24x24Add:before {
-  /*content: "\e739";*/
-  font-family: IONIC-FONT;
-  content: "\f48b";
-}
-
 .uiIconPLF24x24Edit:before {
   font-family: IONIC-FONT;
   content: "\f2ad";
@@ -228,10 +116,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   content: "\eaf2";
   font-family: PLF-FONT-ICONS;
 }
-.notifIcon:before {
-  content: "\e963";
-  font-family: PLF-FONT-ICONS;
-}
 /*             end ICONS               */
 /*=====================================*/
 
@@ -272,7 +156,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 }
 
 
-/***********/
 [class^="uiIcon"],
 .LeftNavigationTDContainer .uiPopup [class^="uiIcon"]{
     .font-icon();
@@ -329,7 +212,6 @@ form {
  [class*="64x64"] {
 	font-size: @sizeIcon64x64;
  }
-/*******/
 
 .uiDocumentPreview {
   .uiIconClose:before {
@@ -372,44 +254,6 @@ form {
     font-size: inherit;
     padding: inherit;
   }
-}
-
-.uiShareDocuments {
-  .addInvite {
-    .sharePermission {
-      a [class^="uiIcon"] {
-        font-size: 16px;
-      }
-      .dropdown-menu {
-        left: -63px;
-      }
-    }
-  }
-  #addActionBtn {
-    width: 40px;
-    height: 40px;
-  }
-  #whoHasAccess {
-      #AccessEntry {
-        .deleteEntry {
-          margin-top: -20px;
-        }
-        .btn-toolbar {
-          margin-right: 3%!important;
-          width: 60px!important;
-          .dropdown .uiActionWithLabel {
-            width: 100%;
-            a [class^="uiIcon"] {
-              font-size: 16px;
-            }
-          }
-        }
-      }
-      .dropdown-menu {
-        margin-top: 18px;
-        left: -44px;
-      }
-    }
 }
 
 .uiIconEcmsAddDocument:before {
