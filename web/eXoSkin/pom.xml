@@ -69,7 +69,6 @@
                             <compress>false</compress>
                             <includes>
                                 <include>Core.less</include>
-                                <include>customStyle.less</include>
                                 <include>platform/skin/platform.less</include>
                                 <include>platform/skin/enterprise.less</include>
                                 <include>platform/portlets/welcome-screens/unlockTrial.less</include>
