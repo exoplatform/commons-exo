@@ -65,7 +65,7 @@
         // 2. Let len be ? ToLength(? Get(O, "length")).
         var len = o.length >>> 0;
 
-        // Steps 3, 4, 5, 6, 7      
+        // Steps 3, 4, 5, 6, 7
         var k = 0;
         var value;
 
@@ -76,7 +76,7 @@
             k++;
           }
 
-          // 3. If len is 0 and initialValue is not present, throw 
+          // 3. If len is 0 and initialValue is not present, throw
           // a TypeError exception.
           if (k >= len) {
             throw new TypeError('Reduce of empty array with no initial value');
@@ -90,13 +90,13 @@
           // b. Let kPresent be ? HasProperty(O, Pk).
           // c. If kPresent is true, then
           //    i. Let kValue be ? Get(O, Pk).
-          //    ii. Let accumulator be ? Call(callbackfn, undefined, 
+          //    ii. Let accumulator be ? Call(callbackfn, undefined,
           //        « accumulator, kValue, k, O »).
           if (k in o) {
             value = callback(value, o[k], k, o);
           }
 
-          // d. Increase k by 1.      
+          // d. Increase k by 1.
           k++;
         }
 

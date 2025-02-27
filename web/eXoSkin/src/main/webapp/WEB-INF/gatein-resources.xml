@@ -137,42 +137,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     </style-theme>
   </window-style>
 
-  <!-- Twitter Bootstrap bootstrap-affix plugin -->
-  <module>
-    <name>bts_affix</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-affix.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Twitter Bootstrap bootstrap-alert plugin -->
-  <module>
-    <name>bts_alert</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-alert.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Twitter Boostrap bootstrap-button plugin -->
   <module>
     <name>bts_button</name>
@@ -182,24 +146,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         (function($) {
         var _$ = window.jQuery; window.jQuery = $;
         <include>/skin/bootstrap/js/bootstrap-button.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Twitter Bootstrap bootstrap-carousel plugin -->
-  <module>
-    <name>bts_carousel</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-carousel.js</include>
         window.jQuery = _$;
         })($);
       </adapter>
@@ -285,24 +231,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     </depends>
   </module>
 
-  <!-- Twitter Bootstrap bootstrap-scrollspy plugin -->
-  <module>
-    <name>bts_scrollspy</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-scrollspy.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Twitter Bootstrap bootstrap-tab plugin -->
   <module>
     <name>bts_tab</name>
@@ -330,26 +258,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         (function($) {
         var _$ = window.jQuery; window.jQuery = $;
         <include>/skin/bootstrap/js/bootstrap-tooltip.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!--
-  Twitter Bootstrap bootstrap-transition plugin
-  firefox 18 and chrome 23 transitionend event is not dispatched correctly
-  -->
-  <module>
-    <name>bts_transition</name>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-transition.js</include>
         window.jQuery = _$;
         })($);
       </adapter>
