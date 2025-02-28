@@ -20,22 +20,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 /*=====================================*/
 /*                 ICONS               */
-.uiIconAppCalendarPortlet:before,
-.uiIconAppAgenda:before,.uiIconAppCalendar:before,.uiIconAppCalendarGadget:before {
-  content: "\e68c";
-  font-family: 'PLF-FONT-ICONS' !important;
-  font-weight: normal;
-}
-.uiIconAppdocuments:before {
-  content: "\e68e";
-  font-family: 'PLF-FONT-ICONS' !important;
-  font-weight: normal;
-}
-.uiIconWikiWiki:before {
-  font-family: IONIC-FONT;
-  content: "\f3e7";
-  font-size: 16px;
-}
 .uiIconHome:before {
   content: "\f447";
   font-family: IONIC-FONT;
@@ -49,44 +33,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 .uiIconArrowDownMini:before ,.uiIconMiniArrowDown:before{
   color: #5b6272;
 }
-.uiIconExt-tasks:before {
-  /*content: "\e690";*/
-  font-family: IONIC-FONT;
-  content: "\f373";
-  font-size: 16px;
-}
-.uiIconPLF24x24Setup:before {
-  /*content: "\e78b";*/
-  font-family: IONIC-FONT;
-  content: "\f13e";
-}
 .uiIconPLFNotifications:before {
   font-family: IONIC-FONT;
   content: "\f39b";
-}
-.uiIconPLF24x24Edit:before {
-  font-family: IONIC-FONT;
-  content: "\f2ad";
-}
-.uiIconPrevArrow:before {
-  content: "\f3d2";
-  font-family: IONIC-FONT;
-  color: black;
-  font-size: 14px;
-}
-.uiIconNextArrow:before {
-  content: "\f3d3";
-  font-family: IONIC-FONT;
-  color: black;
-  font-size: 14px;
-}
-.uiIconSortDown:before {
-  content: "\f35d";
-  font-family: IONIC-FONT;
-}
-.uiIconSortUp:before {
-  content: "\f366";
-  font-family: IONIC-FONT;
 }
 .uiIconChatSmile:before {
   content: "\f38e";
@@ -97,22 +46,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   font-family: IONIC-FONT;
   color: @alertSuccessColor;
 }
-.alert-error .uiIconError:before {
-  content: "\f12a";
-  font-family: IONIC-FONT;
-  color: @alertErrorColor;
-}
-.alert-info .uiIconInfo:before {
-  content: "\f14a";
-  font-family: IONIC-FONT;
-  color: @alertInfoColor;
-}
-.alert-warning .uiIconWarning:before {
-  content: "\f100";
-  font-family: IONIC-FONT;
-  color: @alertWarningIconColor;
-}
-.settingsIcon:not(.uiIconToolbarNavItem):before {
+.settingsIcon:before {
   content: "\eaf2";
   font-family: PLF-FONT-ICONS;
 }
@@ -136,70 +70,10 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   }
 }
 
-#documentPreviewContent {
-  [class^="uiIconMini"][class*="Arrow"],
-  [class^="uiIconMini"],
-  .uiItemSelector .selectedItem [class^="uiIconArrow"] {
-    color: @primaryColor;
-  }
-}
-
-.uiIconPLFMan:before {
-  content: "\f47c";
-  font-family: "IONIC-FONT";
-  font-size: 22px;
-  color: @lightWhite;
-  margin-right: 5px ~'; /** orientation=lt */ ';
-  margin-left: 5px ~'; /** orientation=rt */ ';
-  position: relative;
-  top: 4px;
-}
-
-
 [class^="uiIcon"],
 .LeftNavigationTDContainer .uiPopup [class^="uiIcon"]{
     .font-icon();
 
-}
-
-select,
-textarea,
-input[type="text"],
-input[type="password"],
-input[type="number"],
-input[type="datetime"],
-input[type="datetime-local"],
-input[type="date"],
-input[type="month"],
-input[type="time"],
-input[type="week"],
-input[type="number"],
-input[type="email"],
-input[type="url"],
-input[type="search"],
-input[type="tel"],
-input[type="color"],
-input[disabled],
-.form-horizontal select,
-.uiPassword input[type="password"],
-.selectize-control .selectize-input,
-.uiSocApplication .selectize-control .selectize-input,
-.uiSearch .quickSet .uiSelectbox .selectbox,
-.selectboxMedium .uiSelectbox .selectbox,
-.UIToolbarContainer .uiCreateToolBarPortlet .uiQuickAddEvent .selectboxMini .uiSelectbox .selectbox,
-.UIToolbarContainer .uiCreateToolBarPortlet .uiQuickAddEvent .selectboxMedium .uiSelectbox .selectbox {
-  font-size: 15px;
-  min-height: 40px;
-  padding: 0 10px;
-  border: Solid 1px @inputBorder;
-  border-radius: 5px;
-  box-shadow: none;
-  max-height: 115px;
-  text-overflow: ellipsis;
-}
-
-form {
-	margin: 0;
 }
 
 [class*="24x24"] {
@@ -212,6 +86,18 @@ form {
  [class*="64x64"] {
 	font-size: @sizeIcon64x64;
  }
+
+.dropFileWindow .cke_dialog_title {
+  margin-bottom: 0;
+}
+
+#documentPreviewContent {
+  [class^="uiIconMini"][class*="Arrow"],
+  [class^="uiIconMini"],
+  .uiItemSelector .selectedItem [class^="uiIconArrow"] {
+    color: @primaryColor;
+  }
+}
 
 .uiDocumentPreview {
   .uiIconClose:before {
@@ -229,22 +115,6 @@ form {
   }
 }
 
-.OfficeMiddleTDContainer {
-  padding: 40px 20px !important;
-}
-.OfficeRightTDContainer, .SpaceHomePortletsTDContainer {
-  .uiBox {
-    .clearfix;
-    .title {
-      background: @lightWhite;
-    }
-  }
-}
-
-.dropFileWindow .cke_dialog_title {
-  margin-bottom: 0;
-}
-
 #documentPreviewContent {
   .uiIconSimplePlusMini:before {
     font-family: "PLF-FONT-ICONS";
@@ -256,10 +126,6 @@ form {
   }
 }
 
-.uiIconEcmsAddDocument:before {
-  color: @lightWhite;
-}
-
 #documentPreviewContent {
   .actionIcon [class^="uiIcon"],
   .actionIcon .LeftNavigationTDContainer .uiPopup [class^="uiIcon"] {
@@ -267,16 +133,7 @@ form {
   }
 }
 
-@media (max-width: 480px) {
-  .uiTopicDetail .footPost .btnDetailTopic .btn {
-    box-sizing: content-box;
-  }
-}
-
 @media (max-width: 420px) {
-  .pd-15-0 {
-    margin-bottom: 19%;
-  }
   .uiShareDocuments .selectize-control {
     max-height: none;
   }

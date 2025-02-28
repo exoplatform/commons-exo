@@ -41,13 +41,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     <css-priority>0</css-priority>
   </portal-skin>
 
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>customModule</skin-module>
-    <css-path>/skin/css/customStyle.css</css-path>
-    <css-priority>-1</css-priority>
-  </portal-skin>
-
    <portlet-skin>
     <application-name>trial</application-name>
     <portlet-name>UnlockTrial</portlet-name>
