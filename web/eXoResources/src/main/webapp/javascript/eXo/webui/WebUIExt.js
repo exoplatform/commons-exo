@@ -257,55 +257,6 @@
         }
     };
 
-    var portletForm = {
-        init:function (id, portalControl) {
-            var tabs = $("#" + id + " .nav-tabs a");
-            tabs.each(function () {
-                var tab = $(this);
-                tab.on("click", function () {
-                	  var content = tab.attr("data-target");
-                    if (content === "#EditMode-tab") {
-                        portletForm.hideSaveButton(this);
-                    } else {
-                        portletForm.showSaveButton(this);
-                    }                    
-                    var contentCont = tab.closest('.nav-tabs').next('.tab-content');
-                    contentCont.children(".active").removeClass("active");
-                    contentCont.children("form").children(".active").removeClass("active");
-                    $(content).addClass("active");
-                    
-                    portalControl.UIHorizontalTabs.changeTabForUIFormTabpane(this, id.replace("tab-", ""), content.replace("-tab", "").replace("#", ""));
-                    var actionLink = tab.find("~ .ExtraActions");
-                    eval(actionLink.html());
-                });
-            });
-        },
-
-        hideSaveButton:function (comp) {
-            $(comp).closest(".uiFormTabPane").find(".uiAction").last().find(".btn").each(function () {
-                var button = $(this);
-                if (button.attr("id").indexOf("Save") >= 0) {
-                    button.css("display", "none");
-                }
-                else if (button.attr("id").indexOf("Close") >= 0) {
-                    button.html(button.attr("closeLabel"));
-                }
-            });
-        },
-
-        showSaveButton:function (comp) {
-            $(comp).closest(".uiFormTabPane").find(".uiAction").last().find(".btn").each(function () {
-                var button = $(this);
-                if (button.attr("id").indexOf("Save") >= 0) {
-                    button.css("display", "inline-block");
-                }
-                else if (button.attr("id").indexOf("Close") >= 0) {
-                    button.html(button.attr("cancelLabel"));
-                }
-            });
-        }
-    };
-
     var uiTree = {
         init:function (id, expandClass, collapseClass, disableContextMenu) {
             var parent = $('#' + id);
@@ -334,6 +285,5 @@
         UITree:uiTree,
         UIColorPicker:eXo.webui.UIColorPicker,
         UICombobox:eXo.webui.UICombobox,
-        UIPortletForm:portletForm
     };
 })($, base, portalControl, uiRightClickPopupMenu);

@@ -57,53 +57,11 @@
   </module>
 
   <module>
-    <name>skin</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/core/Skin.js</path>
-    </script>
-  </module>
-
-  <module>
     <name>uiPopup</name>
     <load-group>baseGRP</load-group>
     <script>
       <path>/javascript/eXo/webui/UIPopup.js</path>
     </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>uiMaskLayer</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/core/UIMaskLayer.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>uiPopup</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>uiMaskWorkspace</name>
-    <load-group>baseGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIMaskWorkspace.js</path>
-    </script>
-    <depends>
-      <module>uiMaskLayer</module>
-    </depends>
     <depends>
       <module>base</module>
     </depends>
@@ -120,105 +78,6 @@
     </script>
     <depends>
       <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Portal Javascripts -->
-  <module>
-    <name>portal</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIPortal.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>eXoVueI18n</module>
-      <as>msg</as>
-    </depends>
-  </module>
-
-  <module>
-    <name>portalComposer</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/PortalComposer.js</path>
-    </script>
-    <depends>
-      <module>portalControl</module>
-    </depends>
-    <depends>
-      <module>portalDragDrop</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-    <depends>
-      <module>bts_tooltip</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>portalDragDrop</name>
-    <load-group>portalGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/PortalDragDrop.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>common</module>
-    </depends>
-  </module>
-
-  <!-- WebUI Javascripts -->
-  <module>
-    <name>portalControl</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/portal/UIPortalControl.js</path>
-    </script>
-    <depends>
-      <module>uiForm</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>selectors</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/Selectors.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>uiForm</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIForm.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
     </depends>
   </module>
 
@@ -292,12 +151,6 @@
     </depends>
     <depends>
       <module>jquery</module>
-    </depends>
-    <depends>
-      <module>portalControl</module>
-    </depends>
-    <depends>
-      <module>uiRightClickPopupMenu</module>
     </depends>
   </module>
 
@@ -389,23 +242,6 @@
   </module>
 
   <module>
-    <name>uiRightClickPopupMenu</name>
-    <load-group>webuiExtGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIRightClickPopupMenu.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>uiPopup</module>
-    </depends>
-  </module>
-
-  <module>
     <name>uiVirtualList</name>
     <load-group>webuiExtGRP</load-group>
     <script>
@@ -428,52 +264,13 @@
     </depends>
   </module>
 
-  <module>
-    <name>navigation</name>
-    <script>
-      <path>/javascript/eXo/portal/UIPortalNavigation.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>uiPopup</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Container Javascript -->
-  <module>
-    <name>toggleContainer</name>
-    <script>
-      <path>/javascript/eXo/portal/ToggleContainer.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <module>
     <name>qrcode</name>
     <script>
       <minify>false</minify>
       <path>/javascript/easy.qrcode.min.js</path>
     </script>
-  </module>
-
-  <module>
-    <name>vueEllipsis</name>
-    <script>
-      <path>/javascript/vue-ellipsis.min.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
   </module>
 
   <module>
@@ -490,37 +287,6 @@
     </script>
     <depends>
       <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>customEventPolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/custom-event-polyfill.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>iePolyfills</name>
-    <script>
-      <path>/javascript/eXo/polyfill/ie-polyfills.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>promisePolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/promise.min.js</path>
-    </script>
-  </module>
-
-  <module>
-    <name>fetchPolyfill</name>
-    <script>
-      <path>/javascript/eXo/polyfill/fetch.js</path>
-    </script>
-    <depends>
-      <module>promisePolyfill</module>
     </depends>
   </module>
 
