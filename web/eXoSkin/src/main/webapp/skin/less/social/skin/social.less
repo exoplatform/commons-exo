@@ -21,6 +21,22 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 @import "popover/popover.less";
 @import "Tooltips/Style.less";
 
+
+[class^="uiIcon"],
+.LeftNavigationTDContainer .uiPopup [class^="uiIcon"]{
+    .font-icon();
+}
+
+[class*="24x24"] {
+ font-size: @sizeIcon24x24;
+}
+[class*="32x32"] {
+ font-size: @sizeIcon32x32;
+}
+[class*="64x64"] {
+ font-size: @sizeIcon64x64;
+}
+
 .background-qrcode-image{
     background-image: url(/social/images/cadre.png);
     background-position: center;
