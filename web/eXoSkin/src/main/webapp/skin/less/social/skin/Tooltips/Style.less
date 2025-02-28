@@ -14,20 +14,35 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-@import "../../variables.less"; 
-@import "../../mixins.less";
-@import "SelectImageMicroblog/Style.less";
-@import "SelectFileFromDrives/Style.less";
-@import "popover/popover.less";
-@import "Tooltips/Style.less";
+//
+// Tooltip
+// --------------------------------------------------
+.tooltip {
+	font-size: @baseFontSize - 1 !important;
+	text-shadow: none!important;
+	font-weight: normal!important;
+	&.in{
+		.opacity(80);
+	}
+	&.left{
+		margin-left: -13px;
+	}
+}
 
-.background-qrcode-image{
-    background-image: url(/social/images/cadre.png);
-    background-position: center;
-    background-size: contain;
-    height: 190px;
-    width: 190px;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
+.tooltip-inner {
+	word-wrap: break-word;
+    white-space: normal;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	.border-radius(@borderRadiusSmall - 1);
+	line-height: @baseLineHeight - 4;
+	text-align: left;
+	padding: 8px 10px;
+}
+
+@media(max-width: 1024px){
+    .tooltip {
+        opacity: 0!important;
+        display: none!important;
+    }
 }
