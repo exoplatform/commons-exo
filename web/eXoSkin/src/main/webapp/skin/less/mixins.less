@@ -20,6 +20,39 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //                  MIXINS EXO PLATFORM                 //
 //======================================================//
 
+// Gradient Bar Colors for buttons and alerts
+// --------------------------------------------------
+.gradientBarEXO(@primaryColor, @blackColor, @borderColor, @textColor: #fff, @textShadow: 0 0 0 transparent) {
+	color: @textColor;
+	text-shadow: @textShadow;
+	#gradient > .vertical(@primaryColor, @blackColor);
+	border: 1px solid @borderColor;
+}
+
+// Create Button background
+// --------------------------------------------------
+.buttonBackgroundEXO(@startColor, @endColor, @borderColor, @btnColor: #fff, @textShadow: none) {
+  // gradientBar will set the background to a pleasing blend of these, to support IE<=9
+  .gradientBarEXO(@startColor, @endColor, @borderColor, @btnColor, @textShadow);
+  *background-color: @endColor; // Darken IE7 buttons by default so they stand out more given they won't have borders
+  .reset-filter();
+  // in these cases the gradient won't cover the background, so we override
+  &:hover, &:focus, &:active, &.active, &.disabled, &[disabled] {
+  	color: @btnColor;
+  	background-color: @endColor;
+  }
+  &.disabled, &[disabled] {
+    color: @btnDisableColor;
+  }
+  // Hover/focus state
+  &:hover {
+    text-decoration: none;
+    background-position: 0 -15px;
+    .transition(background-position .1s linear);
+  }
+
+}
+
 // FONTS
 // --------------------------------------------------
 #font {
