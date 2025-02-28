@@ -293,3 +293,27 @@ form {
     margin-left: ~'-3%!important; /** orientation=rt */ ';
   }
 }
+
+.btn-group .btn.btn-primary,.btn-group .btn.btn-primary.dropdown-toggle {
+    color: var(--allPagesLightWhite,#fff);
+    background: var(--allPagesPrimaryColor,#3f8487);
+    border-color: var(--allPagesPrimaryColor,#3f8487);
+}
+
+.uiIconClose::before {
+    font-size: 12px;
+    color: #333
+}
+
+.uiIconClose {
+    top: -1px;
+    opacity: .5;
+    filter: alpha(opacity=50)
+}
+
+.uiIconClose:hover {
+    opacity: 1;
+    filter: alpha(opacity=100);
+    color: var(--allPagesPrimaryColor,#3f8487)!important
+}
+
