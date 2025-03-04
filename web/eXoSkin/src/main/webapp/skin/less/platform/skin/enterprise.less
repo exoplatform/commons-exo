@@ -157,3 +157,66 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     color: var(--allPagesPrimaryColor,#3f8487)!important
 }
 
+@media(min-width: 1025px) {
+    .uiPopupWrapper {
+        /* position:fixed; *//* top:0; *//* left:0; */right:0;
+        bottom: 0;
+        margin: 0;
+        background-color: rgba(0,0,0,0.3);
+        z-index: 999
+    }
+
+    .uiPopupWrapper.UISocialConfirmation {
+        background: none
+    }
+
+    .uiPopupWrapper.UISocialConfirmation .MaskLayer {
+        opacity: .3!important
+    }
+
+    .uiPopupWrapper .uiPopupWrapper {
+        position: static
+    }
+}
+
+.btn, .uiActionWithLabel:not(.uiDropdown) {
+  font-family: @baseFontFamily;
+  font-size: 15px;
+  padding: 9px 20px;
+  color: @btnColor;
+  border: 1px solid @greyColor;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.dropdown-menu>li>a>[class^="uiIcon"]:before {
+    color: var(--allPagesPrimaryColor,#3f8487);
+}
+
+.dropdown-menu li>a {
+    /* color:var(--allPagesDarkGrey,#4d5466); */
+    padding: 7px 20px;
+    border-radius: 3px
+}
+
+.dropdown-menu li>a:hover>[class^="uiIcon"]:before,.dropdown-menu li>a:focus>[class^="uiIcon"]:before {
+    color: var(--allPagesLightWhite,#fff)
+}
+
+.dropdown-menu>li>a>[class^="uiIcon"],.uiUserNavigationPortlet .userNavigation .dropdown-menu>li>a>[class^="uiIcon"] {
+    font-size: 13px;
+}
+.dropdown-menu>li>a>[class^="uiIcon"]:before {
+    color: var(--allPagesPrimaryColor,#3f8487);
+}
+
+@media(max-width: 1023px) and (min-width:481px) {
+    .dropdown-menu>li>a>[class^="uiIcon"],.uiUserNavigationPortlet .userNavigation .dropdown-menu>li>a>[class^="uiIcon"] {
+        font-size:17px
+    }
+}
+
+[class^="uiIconMini"][class*="Arrow"],[class^="uiIconMini"],[class^="uiIconArrow"],.uiItemSelector .selectedItem [class^="uiIconArrow"] {
+    font-size: 9px;
+    top: -1px;
+}
