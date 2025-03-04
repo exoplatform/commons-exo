@@ -29,23 +29,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   <portal-skin>
     <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>commons</skin-module>
-    <css-path>/skin/css/commons/skin/commons.css</css-path>
-    <css-priority>1</css-priority>
-  </portal-skin>
-
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
     <skin-module>Social</skin-module>
     <css-path>/skin/css/social/skin/social.css</css-path>
     <css-priority>3</css-priority>
-  </portal-skin>
-
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>Platform-css</skin-module>
-    <css-path>/skin/css/platform/skin/platform.css</css-path>
-    <css-priority>4</css-priority>
   </portal-skin>
 
   <portal-skin>
@@ -55,22 +41,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     <css-priority>0</css-priority>
   </portal-skin>
 
-  <portal-skin>
-    <skin-name>${exo.skin.name}</skin-name>
-    <skin-module>customModule</skin-module>
-    <css-path>/skin/css/customStyle.css</css-path>
-    <css-priority>-1</css-priority>
-  </portal-skin>
-  
-  <!-- Platform - welcome screens skins -->
-  <portlet-skin>
-    <application-name>portal</application-name>
-    <portlet-name>Conditions</portlet-name>
-    <skin-name>${exo.skin.name}</skin-name>
-    <css-path>/skin/css/platform/portlets/welcome-screens/termsAndConditions/style.css</css-path>
-  </portlet-skin>
-  
-  <portlet-skin>
+   <portlet-skin>
     <application-name>trial</application-name>
     <portlet-name>UnlockTrial</portlet-name>
     <skin-name>${exo.skin.name}</skin-name>
@@ -159,42 +130,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     </style-theme>
   </window-style>
 
-  <!-- Twitter Bootstrap bootstrap-affix plugin -->
-  <module>
-    <name>bts_affix</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-affix.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Twitter Bootstrap bootstrap-alert plugin -->
-  <module>
-    <name>bts_alert</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-alert.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Twitter Boostrap bootstrap-button plugin -->
   <module>
     <name>bts_button</name>
@@ -204,24 +139,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         (function($) {
         var _$ = window.jQuery; window.jQuery = $;
         <include>/skin/bootstrap/js/bootstrap-button.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!-- Twitter Bootstrap bootstrap-carousel plugin -->
-  <module>
-    <name>bts_carousel</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-carousel.js</include>
         window.jQuery = _$;
         })($);
       </adapter>
@@ -307,24 +224,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     </depends>
   </module>
 
-  <!-- Twitter Bootstrap bootstrap-scrollspy plugin -->
-  <module>
-    <name>bts_scrollspy</name>
-    <load-group>bts</load-group>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-scrollspy.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
   <!-- Twitter Bootstrap bootstrap-tab plugin -->
   <module>
     <name>bts_tab</name>
@@ -352,26 +251,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         (function($) {
         var _$ = window.jQuery; window.jQuery = $;
         <include>/skin/bootstrap/js/bootstrap-tooltip.js</include>
-        window.jQuery = _$;
-        })($);
-      </adapter>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-  </module>
-
-  <!--
-  Twitter Bootstrap bootstrap-transition plugin
-  firefox 18 and chrome 23 transitionend event is not dispatched correctly
-  -->
-  <module>
-    <name>bts_transition</name>
-    <script>
-      <adapter>
-        (function($) {
-        var _$ = window.jQuery; window.jQuery = $;
-        <include>/skin/bootstrap/js/bootstrap-transition.js</include>
         window.jQuery = _$;
         })($);
       </adapter>

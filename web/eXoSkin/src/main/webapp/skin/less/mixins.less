@@ -68,8 +68,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	}
 }
 
-
-
 // Status Elements
 // --------------------------------------------------
 #StatusElements {
@@ -128,37 +126,11 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	}
 }
 
-// error, noticeEmpty
-// --------------------------------------------------
-.error() {
-	color: @errorColor;
-}
-.noticeEmpty() {
-	color: @errorColor;
-}
-
-.noticeEmpty() {
-	color: @baseColorLight;
-}
-
 // Title
 // --------------------------------------------------
 .title(@color: @textColor,@shadowColor: #cdcdcd,@fonSize : 18px,@fontWeight: @headingsFontWeight,@lineHeight: @baseLineHeight) {
 	color: @color;
 	#font > .sans-serif-bold(@fonSize,@fontWeight,@lineHeight);
-}
-
-.titleWithBorder() {
-	position: relative;
-	overflow: hidden;
-	&:after {
-		border-bottom: 1px solid #dadada;
-		height: 11px;
-		content: "";
-		position: absolute;
-		width: 100%;
-		margin-left: 10px;
-	}
 }
 
 // uiBox
@@ -228,25 +200,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     }
 }
 
-// Gray Light Box
-// --------------------------------------------------
-.uiGrayLightBox(){
-	padding: @gutterSizeBase;
-	border: 1px solid @borderColor;
-	background: @uiBoxGray;
-	.border-radius(@baseBorderRadius);
-	.box-shadow(0px 1px 2px rgba(0,0,0,.06));
-	label {
-		display: inline-block;
-	}
-	input {
-		margin-bottom: 0px;
-	}
-}
-
-.center() {
-	text-align: center;
-}
 
 // AVATAR
 // --------------------------------------------------
@@ -289,26 +242,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	.circleBorderAvatar(40px);
 }
 
-.avatarSmallCircle() {
-	.circleBorderAvatar(32px);
-}
-
-.avatarMiniCircle() {
-	.circleBorderAvatar(24px);
-}
-
-.avatarXLarge() {
-	.roundedCornerAvatar(120px, 4px);
-}
-
-.avatarLarge() {
-	.roundedCornerAvatar(100px, 4px);
-}
-
-.avatarXMedium() {
-	.roundedCornerAvatar(75px, 4px);
-}
-
 .avatarMedium() {
 	.roundedCornerAvatar(50px, 3px);
 }
@@ -317,155 +250,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 	.roundedCornerAvatar(36px, 2px);
 }
 
-.avatarSmall() {
-	.roundedCornerAvatar(26px, 2px);
-}
 
-.avatarMini() {
-	width: 20px;
-	height: 20px;
-	img {
-	     max-height: 20px;
-	     max-width: 20px;
-	     .border-radius(2px);
-	 }
-}
-
-.avatarTiny() {
-	.roundedCornerAvatar(16px, 2px);
-}
-
-.squareBorderAvatar(@size) {
-	#gradient .vertical(@baseBackground, @primaryBackground);
-	.square(@size);
-	.border-radius(4px);
-	.box-shadow(0px 2px 4px rgba(13px, 13px, 13px, 0.27));
-	border: 1px solid @borderColor;
-	padding: 7px;
-	display: block;
-
-	img {
-		 max-height: @size;
-		 max-width: @size;
-		 margin: 0;
-		 padding: 0;
-		 position: relative;
-		 top: 50%;
-		 left: 50%;
-		 transform: translateX(-50%) translateY(-50%);
-		 .border-radius(0px);
-	}
-}
-
-.avatarLargeWithBorder() {
-	.squareBorderAvatar(100px);
-}
-
-.avatarXLargeWithBorder() {
-	.squareBorderAvatar(120px);
-}
-
-
-// Round Corner
-// --------------------------------------------------
-.roundCornerBoxWithTitle() {
-	background: @baseBackground;
-	border: 1px solid @borderColor;
-	.border-radius(4px);
-	.box-shadow(0px 1px 2px rgba(0, 0, 0, 0.08));
-
-	.titleBox {
-		.border-radius(4px 4px 0px 0px );
-		.box-shadow(0px 1px 2px rgba(13, 13, 13, 0.08));
-		background: @primaryBackground;
-		border-bottom: 1px solid @borderColor;
-		margin: 0px;
-		line-height: @baseLineHeight ;
-		font-weight: @headingsFontWeight;
-		color: @baseColorDark;
-		padding: 8px 10px;
-		word-wrap: break-word;
-	}
-}
-
-// Create Margin And Padding Utilities Class
-// --------------------------------------------------
-.marginAndPadding(@maxValue, @counter: 5, @minValue: 0, @unit: px)
-{
-
-  // The Loop
-  .loop_margin_padding (@index) when (@index >= @minValue) {
-
-    // Padding
-    .pd@{index} {padding: ~"@{index}@{unit}";}
-    .pdT@{index} {padding-top: ~"@{index}@{unit}";}
-    .pdB@{index} {padding-bottom: ~"@{index}@{unit}";}
-    .pdR@{index} {padding-right: ~"@{index}@{unit}; /* orientation=lt */";}
-    .pdL@{index} {padding-left: ~"@{index}@{unit}; /* orientation=lt */";}
-    .pdR@{index} {padding-left: ~"@{index}@{unit}; /* orientation=rt */";}
-    .pdL@{index} {padding-right: ~"@{index}@{unit}; /* orientation=rt */";}
-
-    // Padding Important
-    .pd@{index}-ipt {padding: ~"@{index}@{unit}!important";}
-    .pdT@{index}-ipt {padding-top: ~"@{index}@{unit}!important";}
-    .pdB@{index}-ipt {padding-bottom: ~"@{index}@{unit}!important";}
-    .pdR@{index}-ipt {padding-right: ~"@{index}@{unit}!important; /* orientation=lt */";}
-    .pdL@{index}-ipt {padding-left: ~"@{index}@{unit}!important; /* orientation=lt */";}
-    .pdR@{index}-ipt {padding-left: ~"@{index}@{unit}!important; /* orientation=rt */";}
-    .pdL@{index}-ipt {padding-right: ~"@{index}@{unit}!important; /* orientation=rt */";}
-
-    // Padding Horizatial
-    .pd-0-@{index} {padding: 0 ~"@{index}@{unit}";}
-    .pd-0-@{index}-ipt {padding: 0 ~"@{index}@{unit}!important";}
-
-
-    // Padding Vertical
-    .pd-@{index}-0 {padding: ~"@{index}@{unit}" 0;}
-    .pd-@{index}-0-ipt {padding: ~"@{index}@{unit}" 0!important;}
-
-      // Margin
-    .mg@{index} {margin: ~"@{index}@{unit}";}
-    .mgT@{index} {margin-top: ~"@{index}@{unit}";}
-    .mgB@{index} {margin-bottom: ~"@{index}@{unit}";}
-    .mgR@{index} {margin-right: ~"@{index}@{unit}; /* orientation=lt */";}
-    .mgL@{index} {margin-left: ~"@{index}@{unit}; /* orientation=lt */";}
-    .mgR@{index} {margin-left: ~"@{index}@{unit}; /* orientation=rt */";}
-    .mgL@{index} {margin-right: ~"@{index}@{unit}; /* orientation=rt */";}
-
-      // Margin Important
-    .mg@{index}-ipt {margin: ~"@{index}@{unit}!important";}
-    .mgT@{index}-ipt {margin-top: ~"@{index}@{unit}!important";}
-    .mgB@{index}-ipt {margin-bottom: ~"@{index}@{unit}!important";}
-    .mgR@{index}-ipt {margin-right: ~"@{index}@{unit}!important; /* orientation=lt */";}
-    .mgL@{index}-ipt {margin-left: ~"@{index}@{unit}!important; /* orientation=lt */";}
-    .mgR@{index}-ipt {margin-left: ~"@{index}@{unit}!important; /* orientation=rt */";}
-    .mgL@{index}-ipt {margin-right: ~"@{index}@{unit}!important; /* orientation=rt */";}
-
-      // margin Horizatial
-    .mg-0-@{index} {margin: 0 ~"@{index}@{unit}";}
-    .mg-0-@{index}-ipt {margin: 0 ~"@{index}@{unit}!important";}
-
-      // margin Vertical
-    .mg-@{index}-0 {margin: ~"@{index}@{unit}" 0;}
-    .mg-@{index}-0-ipt {margin: ~"@{index}@{unit}" 0!important;}
-
-      // next iteration
-    .loop_margin_padding(@index - @counter);
-    }
-
-  // end the loop when index is 0
-  .loop_margin_padding (0) {}
-
-  // "call" the loopingClass the first time with highest value
-  .loop_margin_padding (@maxValue);
-}
-
-
-
-.loading-action {
-  -webkit-animation: loading 1s infinite linear;
-  animation: loading 1s infinite linear;
-}
 @-webkit-keyframes loading{
   0% {
     -webkit-transform: rotate(0deg);
@@ -509,42 +294,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
   box-sizing: @value;
 }
 
-//resize
-
-.resize() {
-  width: 30px;
-  .iconControll {
-    #gradient > .vertical(@baseBackground, @primaryBackground);
-    border: 1px solid @borderColor;
-    border-right: 0;
-    padding: 4px 0;
-    margin-top: 7px;
-    display: block;
-    float: left;
-    margin-left: 2px;
-    outline: none;
-    cursor: pointer;
-    .border-radius(@borderRadiusSmall 0  0 @borderRadiusSmall);
-  }
-  &.resizeLt {
-    a {
-      .border-radius(0 @borderRadiusSmall @borderRadiusSmall 0);
-      border-right: 1px solid @borderColor;
-      border-left: 0;
-      margin-left: 0px;
-    }
-    .line {
-      display: none;
-    }
-  }
-  .line {
-    width:2px;
-    border-left: 1px solid @borderColor;
-    margin:auto;
-    min-height: 300px;
-    cursor: col-resize;
-  }
-}
 
 .baseColorLight() {
   color: @baseColorLight;
