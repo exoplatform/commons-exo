@@ -47,3 +47,25 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     align-items: center;
     justify-content: space-around;
 }
+
+/* this css is needed for spaces created in 6.3 and before.
+It allow to display them correctly in 7.0.0 */
+
+#ApplicationChildren {
+	display:flex;
+  .SpaceHomeActivitiesTDContainer {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: ~"calc(100% - 320px)";
+    max-width: ~"calc(100% - 320px)";
+    padding-right: 10px;
+    box-sizing: border-box;
+  }
+
+  .SpaceHomePortletsTDContainer {
+    flex: 0 1 320px;
+    max-width: 320px;
+    box-sizing: border-box;
+    padding-left: 10px;
+  }
+}
