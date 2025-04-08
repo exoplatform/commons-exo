@@ -51,7 +51,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 /* this css is needed for spaces created in 6.3 and before.
 It allow to display them correctly in 7.0.0 */
 
-#ApplicationChildren {
+#ApplicationChildren:has(td.SpaceHomeActivitiesTDContainer) {
 	display:flex;
   .SpaceHomeActivitiesTDContainer {
     flex-grow: 0;
