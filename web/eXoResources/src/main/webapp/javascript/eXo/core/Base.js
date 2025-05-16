@@ -70,13 +70,20 @@
 	/**
 	 * log out of user session
 	 */
-	eXo.portal.logout = function() {
+	eXo.portal.logout = function(redirect) {
 		// Dispatch logout event
 		var logoutEvent = document.createEvent('Event');
 		logoutEvent.initEvent('exo-logout', true, true);
 		window.dispatchEvent(logoutEvent);
+		var params;
+		var currentPortalUri = eXo.env.portal.context + "/" + eXo.env.portal.portalName;
+		if (redirect != null) {
+            params = [
+                { name: 'redirect', value: redirect }
+            ];
+        }
 		// Perform logout
-		window.location = eXo.env.server.createPortalURL("UIPortal", "Logout", false) ;
+		window.location = eXo.env.server.createPortalURL("UIPortal", "Logout", false, params) ;
 	} ;
 	
 	eXo.session.openUrl = null ;
