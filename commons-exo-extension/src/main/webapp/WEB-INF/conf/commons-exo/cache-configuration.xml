@@ -506,6 +506,67 @@
             </field>
           </object>
         </object-param>
+        <object-param>
+          <name>portal.tokens</name>
+          <description>The Cache configuration for Portal Token Objects</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.tokens</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.tokens.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.tokens.TimeToLive:86400}</long>
+            </field>
+          </object>
+        </object-param>
+        <!-- Identity Registry and Conversation State Registry -->
+        <object-param>
+          <name>portal.IdentityRegistry</name>
+          <description>Cache configuration for Identity ACL Registry</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.IdentityRegistry</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.IdentityRegistry.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.IdentityRegistry.TimeToLive:3600}</long>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>portal.ConversationRegistry</name>
+          <description>Cache configuration for Conversation Registry</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.ConversationRegistry</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.ConversationRegistry.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.ConversationRegistry.TimeToLive:3600}</long>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>portal.ConversationRegistryStates</name>
+          <description>Cache configuration for Conversation Registry Session States</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.ConversationRegistryStates</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.ConversationRegistryStates.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.ConversationRegistryStates.TimeToLive:3600}</long>
+            </field>
+          </object>
+        </object-param>
         <!-- SettingService -->
         <object-param>
           <name>commons.SettingService</name>
@@ -680,6 +741,31 @@
               name="cacheMode"
               profiles="cluster">
               <string>${exo.cache.portal.description.cacheMode:invalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>portal.DescriptionLocales</name>
+          <description>The Cache configuration for the description locales by site</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.DescriptionLocales</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.portal.DescriptionLocales.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.DescriptionLocales.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.DescriptionLocales.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.DescriptionLocales.cacheMode:invalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1344,6 +1430,36 @@
               name="cacheMode"
               profiles="cluster">
               <string>${exo.cache.wallet.account.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>social.profileSettings</name>
+          <description></description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>social.profileSettings</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.profileSettings.MaxNodes:2000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.profileSettings.TimeToLive:-1}</long>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>social.profileSettingIdsByName</name>
+          <description></description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>social.profileSettingIdsByName</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.profileSettingIdsByName.MaxNodes:2000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.profileSettingIdsByName.TimeToLive:-1}</long>
             </field>
           </object>
         </object-param>
