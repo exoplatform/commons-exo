@@ -102,27 +102,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 }
 
-/* Landscape phone to portrait tablet */
-@media (min-width: 768px) and (max-width: 1024px) {
-    #UIMaskWorkspace .UIMaskWorkspace{
-        margin-top: @margin!important;
-    }
-}
-
 /* Landscape phones and down */
 @media (max-width: 767px) {
-    .uiTabNormal .nav-tabs > li > a ,.uiTabNormal .nav-tabs > li > a:hover{
-        border-bottom: none;
-    }
-    .uiPopup, #UIMaskWorkspace .UIMaskWorkspace {
-        margin: auto!important;
-        max-width: 560px!important;
-        width: 100%;
-    }
-    #UIMaskWorkspace .UIMaskWorkspace{
-        margin-top: 0px!important;
-    }
-
     .mobile-visible {
         display: block;
     }
@@ -147,15 +128,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		max-width: 100%;
         width: 100%;
 	}
-}
-
-// end 767
-
-@media (max-width: 600px) {
-    .uiPopup, #UIMaskWorkspace  .UIMaskWorkspace {
-        margin: 0 15px!important;
-        width: auto !important;
-    }
 }
 
 @import "_size-responsive.less";
