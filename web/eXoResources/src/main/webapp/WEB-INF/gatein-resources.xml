@@ -121,23 +121,6 @@
     </depends>
   </module>
 
-  <module>
-    <name>uiPopupMessages</name>
-    <load-group>webuiGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/UIPopupMessages.js</path>
-    </script>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>uiPopupWindow</module>
-    </depends>
-    <depends>
-      <module>bts_collapse</module>
-    </depends>
-  </module>
-
   <!-- IphoneStyle plugin -->
   <module>
     <name>iphoneStyleCheckbox</name>
@@ -168,29 +151,6 @@
     </depends>
     <depends>
       <module>jquery</module>
-    </depends>
-  </module>
-
-  <module>
-    <name>upload</name>
-    <load-group>webuiExtGRP</load-group>
-    <script>
-      <path>/javascript/eXo/webui/Upload.js</path>
-    </script>
-    <depends>
-      <module>base</module>
-    </depends>
-    <depends>
-      <module>jquery</module>
-    </depends>
-    <depends>
-      <module>uiMaskLayer</module>
-    </depends>
-    <depends>
-      <module>portalRequest</module>
-    </depends>
-    <depends>
-      <module>bts_tooltip</module>
     </depends>
   </module>
 
