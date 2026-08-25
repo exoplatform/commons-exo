@@ -19,16 +19,19 @@ package org.exoplatform.services.connector.credentials;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.mail.Authenticator;
 import javax.mail.PasswordAuthentication;
 
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+
+import jakarta.annotation.PostConstruct;
+
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
 
 /**
  * The single, generic "Personal" provider: delegates to whichever connector kind's
@@ -39,19 +42,72 @@ import org.springframework.stereotype.Component;
  * lists this package in its {@code scanBasePackages}, and it is the only WAR that
  * does - so this component-scan discovery only ever happens once, no
  * {@code @ConditionalOnMissingBean} guard needed.
+ * <p>
+ * The sources are <b>not</b> discovered by that scan, and this is where the design
+ * turns: each source lives in its own WAR, whose Spring context is built
+ * <i>after</i> this one, because every connector depends on this module. A
+ * {@code List<PersonalCredentialsSource>} injected here would therefore be
+ * resolved while no source existed yet, and would stay empty for the life of the
+ * platform - silently, since an empty map produces no credentials rather than an
+ * error. So the sources push themselves in through
+ * {@link #register(PersonalCredentialsSource)} from their own
+ * {@code @PostConstruct}, which runs at the one moment both this bean and theirs
+ * exist.
+ * <p>
+ * Hence {@code @Service} rather than {@code @Component}: that is the annotation
+ * the Kernel-Spring bridge exports across WARs
+ * ({@code KernelContainerLifecyclePlugin.isServiceBean}), and under
+ * {@code @Component} no source could see this provider to register into it.
  */
-@Component
+@Service
 public class PersonalCredentialsProvider implements ConnectorCredentialsProvider {
 
    public static final String NAME = "personal";
 
-   private final Map<String, PersonalCredentialsSource> sourcesByConnectorKind;
+   private static final Log LOG = ExoLogger.getLogger(PersonalCredentialsProvider.class);
 
-   public PersonalCredentialsProvider(List<PersonalCredentialsSource> sources) {
-      this.sourcesByConnectorKind = sources.stream()
-                                            .collect(Collectors.toMap(PersonalCredentialsSource::getConnectorKind,
-                                                                       Function.identity(),
-                                                                       (first, second) -> first));
+   private final ConnectorCredentialsService connectorCredentialsService;
+
+   /**
+    * Concurrent because sources register from the boot thread of their own WAR,
+    * and those threads are not serialised with one another.
+    */
+   private final Map<String, PersonalCredentialsSource> sourcesByConnectorKind = new ConcurrentHashMap<>();
+
+   public PersonalCredentialsProvider(ConnectorCredentialsService connectorCredentialsService) {
+      this.connectorCredentialsService = connectorCredentialsService;
+   }
+
+   /**
+    * Announces this provider to the resolution service. Plain required injection
+    * and no {@code @ConditionalOnClass}, unlike a provider shipped in its own WAR:
+    * this one lives in the same module and the same Spring context as the service,
+    * so both absences the guards cover are impossible here.
+    */
+   @PostConstruct
+   public void register() {
+      connectorCredentialsService.register(this);
+   }
+
+   /**
+    * Records a connector's source under the kind it declares. A second source for
+    * a kind already registered is refused rather than silently replacing the
+    * first: two sources for one kind means two storages claiming the same users,
+    * and whichever won would depend on WAR deployment order.
+    *
+    * @param source the source announcing itself, never null
+    */
+   public void register(PersonalCredentialsSource source) {
+      String connectorKind = source.getConnectorKind();
+      PersonalCredentialsSource previous = sourcesByConnectorKind.putIfAbsent(connectorKind, source);
+      if (previous != null) {
+         LOG.warn("A personal credentials source is already registered for connector kind '{}' ({}); ignoring {}",
+                  connectorKind,
+                  previous.getClass().getName(),
+                  source.getClass().getName());
+         return;
+      }
+      LOG.info("Registered personal credentials source for connector kind '{}'", connectorKind);
    }
 
    @Override
@@ -111,6 +167,16 @@ public class PersonalCredentialsProvider implements ConnectorCredentialsProvider
       // on every call, so there is nothing to invalidate.
    }
 
+   /**
+    * The source serving the context's connector kind, read at call time: a
+    * connector's WAR may have registered long after this bean was built, and one
+    * deployed later still must be served. Null when no connector of that kind is
+    * deployed, which is a normal state - an addon absent from a platform
+    * registers nothing.
+    *
+    * @param context the request being served
+    * @return the source, or null
+    */
    private PersonalCredentialsSource source(ConnectorCredentialsContext context) {
       return sourcesByConnectorKind.get(context.getConnectorKind());
    }
