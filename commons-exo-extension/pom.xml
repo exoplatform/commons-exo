@@ -28,6 +28,19 @@
   <packaging>war</packaging>
   <name>Commons Exo Extension</name>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.exoplatform.commons-exo</groupId>
+      <artifactId>exo.core.component.connector.credentials</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.meeds.portal</groupId>
+      <artifactId>portal.component.common</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
   <build>
     <finalName>commons-exo-extension</finalName>
     <plugins>
