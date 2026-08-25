@@ -18,6 +18,7 @@
     <module>exo.kernel.component.command</module>
     <module>exo.kernel.component.ext.cache.impl.infinispan.v8</module>
     <module>exo.core.component.database</module>
+    <module>exo.core.component.connector.credentials</module>
   </modules>
   <scm>
     <connection>scm:git:git://github.com/exoplatform/commons-exo.git</connection>
@@ -88,6 +89,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>exo.core.component.database</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>exo.core.component.connector.credentials</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
