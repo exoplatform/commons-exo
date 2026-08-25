@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.Base64;
-import java.util.List;
 import java.util.Set;
 
 import javax.mail.Authenticator;
@@ -50,15 +49,52 @@ public class PersonalCredentialsProviderTest {
       return (PasswordAuthentication) method.invoke(authenticator);
    }
 
+   /**
+    * A provider with the given sources already announced - through the real
+    * {@link PersonalCredentialsProvider#register(PersonalCredentialsSource)},
+    * not a stub: registration is now the only way a source reaches the provider,
+    * so every test rides that path.
+    *
+    * @param sources the sources to announce
+    * @return the provider under test
+    */
+   private static PersonalCredentialsProvider providerWith(PersonalCredentialsSource... sources) {
+      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(new ConnectorCredentialsService());
+      for (PersonalCredentialsSource source : sources) {
+         provider.register(source);
+      }
+      return provider;
+   }
+
+   /**
+    * The first registration for a kind wins and a second is refused, because
+    * replacing it would make which storage serves a connector's users depend on
+    * the order the platform happened to deploy its WARs in.
+    */
+   @Test
+   public void testASecondSourceForOneKindDoesNotReplaceTheFirst() {
+      PersonalCredentialsSource first = emailSource(new RawCredentials("first@acme.com", "s1"));
+      PersonalCredentialsSource second = emailSource(new RawCredentials("second@acme.com", "s2"));
+      PersonalCredentialsProvider provider = providerWith(first, second);
+
+      ConnectorCredentialsContext context = new ConnectorCredentialsContext(1L,
+                                                                            PersonalCredentialsProvider.NAME,
+                                                                            TEST_USER,
+                                                                            ConnectorCredentialsChannel.IMAP,
+                                                                            "email");
+
+      assertEquals("first@acme.com", provider.resolveTargetIdentity(context));
+   }
+
    @Test
    public void testGetName() {
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of());
+      PersonalCredentialsProvider provider = providerWith();
       assertEquals("personal", provider.getName());
    }
 
    @Test
    public void testGetSupportedChannels() {
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of());
+      PersonalCredentialsProvider provider = providerWith();
       Set<ConnectorCredentialsChannel> channels = provider.getSupportedChannels();
       assertTrue(channels.contains(ConnectorCredentialsChannel.IMAP));
       assertTrue(channels.contains(ConnectorCredentialsChannel.SMTP));
@@ -67,14 +103,14 @@ public class PersonalCredentialsProviderTest {
 
    @Test
    public void testRequiresUserAction() {
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of());
+      PersonalCredentialsProvider provider = providerWith();
       assertTrue(provider.requiresUserAction());
    }
 
    @Test
    public void testProduceImapWrapsMailConnectorCredentials() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of(source));
+      PersonalCredentialsProvider provider = providerWith(source);
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -90,7 +126,7 @@ public class PersonalCredentialsProviderTest {
    @Test
    public void testProduceHttpWrapsHttpConnectorCredentials() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("caldavUser", "secret"));
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of(source));
+      PersonalCredentialsProvider provider = providerWith(source);
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.HTTP, "email");
@@ -103,7 +139,7 @@ public class PersonalCredentialsProviderTest {
 
    @Test
    public void testProduceThrowsWhenNoSourceForConnectorKind() {
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of());
+      PersonalCredentialsProvider provider = providerWith();
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -113,7 +149,7 @@ public class PersonalCredentialsProviderTest {
    @Test
    public void testProduceThrowsWhenSourceHasNoCredentials() {
       PersonalCredentialsSource source = emailSource(null);
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of(source));
+      PersonalCredentialsProvider provider = providerWith(source);
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -122,7 +158,7 @@ public class PersonalCredentialsProviderTest {
 
    @Test
    public void testInvalidateIsANoOp() {
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of());
+      PersonalCredentialsProvider provider = providerWith();
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
       provider.invalidate(context);
@@ -131,7 +167,7 @@ public class PersonalCredentialsProviderTest {
    @Test
    public void testResolveTargetIdentityAnswersTheStoredRemoteAccount() {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of(source));
+      PersonalCredentialsProvider provider = providerWith(source);
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.HTTP, "email");
@@ -146,7 +182,7 @@ public class PersonalCredentialsProviderTest {
    @Test
    public void testResolveTargetIdentityMatchesWhatProduceAuthenticatesAs() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
-      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(List.of(source));
+      PersonalCredentialsProvider provider = providerWith(source);
 
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -164,8 +200,8 @@ public class PersonalCredentialsProviderTest {
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.HTTP, "email");
 
-      assertNull(new PersonalCredentialsProvider(List.of()).resolveTargetIdentity(context));
-      assertNull(new PersonalCredentialsProvider(List.of(emailSource(null))).resolveTargetIdentity(context));
+      assertNull(providerWith().resolveTargetIdentity(context));
+      assertNull(providerWith(emailSource(null)).resolveTargetIdentity(context));
    }
 
 }
