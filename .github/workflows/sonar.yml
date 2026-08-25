@@ -8,6 +8,7 @@ on:
       - feature/mips
       - develop
       - stable/*
+  workflow_dispatch:
 
 concurrency:
   group: sonar-${{ github.ref }}
