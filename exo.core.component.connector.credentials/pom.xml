@@ -35,6 +35,10 @@
    <name>Meeds:: PLF Core :: Component :: Connector Credentials Contract</name>
    <description>Shared contract for pluggable connector credentials providers (Personal, technical account, OAuth...) consumed by connectors (email, CalDAV, CardDAV) to obtain channel-typed, ready-to-use credentials material.</description>
 
+   <properties>
+      <exo.test.coverage.ratio>0.90</exo.test.coverage.ratio>
+   </properties>
+
    <dependencies>
       <dependency>
          <groupId>io.meeds.kernel</groupId>
