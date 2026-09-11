@@ -30,4 +30,23 @@
       <module>eXoVueI18n</module>
     </depends>
   </module>
+
+  <module>
+    <name>credentialsProviderConfig</name>
+    <load-group>CredentialsGrp</load-group>
+    <script>
+      <minify>false</minify>
+      <path>/js/credentialsProviderConfig.bundle.js</path>
+    </script>
+    <depends>
+      <module>vue</module>
+    </depends>
+    <depends>
+      <module>vuetify</module>
+    </depends>
+    <depends>
+      <module>eXoVueI18n</module>
+    </depends>
+  </module>
+
 </gatein-resources>
