@@ -37,6 +37,12 @@
     <url-pattern>*.css</url-pattern>
     <url-pattern>*.js</url-pattern>
     <url-pattern>*.html</url-pattern>
+    <!-- Serves this webapp's resource bundles, which the connector add-ons load
+         alongside their own: the provider labels and the refusal codes belong to
+         commons-exo, and duplicating them in every add-on's bundle would make one
+         wording per add-on. Without this pattern the URL answers nothing and the
+         drawers show the technical keys. -->
+    <url-pattern>/i18n/*</url-pattern>
     <url-pattern>/images/*</url-pattern>
   </filter-mapping>
 

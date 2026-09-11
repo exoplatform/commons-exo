@@ -16,6 +16,8 @@
  */
 package org.exoplatform.services.connector.credentials;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -98,6 +100,23 @@ public interface ConnectorCredentialsProvider {
     */
    default String resolveTargetIdentity(ConnectorCredentialsContext context) {
       return null;
+   }
+
+   /**
+    * The fields an administrator must fill in on a connector that selects this
+    * provider, in the order they are to be shown. Empty when the provider needs no
+    * configuration of its own - the Personal case, where the material comes from what
+    * the user already entered for that connector.
+    * <p>
+    * The provider describes; it does not render, and it does not persist. The admin UI
+    * builds its form from this list, and the generic configuration storage reads the
+    * same list to know which values to encrypt - the ones typed
+    * {@link ConnectorCredentialsConfigFieldType#SECRET}. So a provider adds a field
+    * without touching a connector's admin screen or its storage, which is what keeps
+    * "a connector never inspects how a provider works" true of the configuration too.
+    */
+   default List<ConnectorCredentialsConfigField> getConfigurationFields() {
+      return Collections.emptyList();
    }
 
 }

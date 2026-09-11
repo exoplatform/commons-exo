@@ -16,6 +16,8 @@
  */
 package org.exoplatform.services.connector.credentials;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -86,6 +88,27 @@ public class ConnectorCredentialsService {
     *            requested channel, or if the provider itself fails to produce
     *            material
     */
+   /**
+    * Every provider announced to this service, by name.
+    * <p>
+    * Sorted, and that is the point: providers register from their own
+    * {@code @PostConstruct}, in whatever order their WARs finish starting, into a
+    * {@link ConcurrentHashMap} whose iteration order is neither declaration order nor
+    * stable across restarts. An administration screen offering the choice of a provider
+    * would then show a list that reshuffles between two page loads.
+    * <p>
+    * Answered as an unmodifiable list: it is a view of the service's own registry, and
+    * {@link #register(ConnectorCredentialsProvider)} is the only way in.
+    *
+    * @return the announced providers, ordered by {@link ConnectorCredentialsProvider#getName()}
+    */
+   public List<ConnectorCredentialsProvider> getProviders() {
+      return providersByName.values()
+                            .stream()
+                            .sorted(Comparator.comparing(ConnectorCredentialsProvider::getName))
+                            .toList();
+   }
+
    public ConnectorCredentials produce(ConnectorCredentialsContext context) throws ConnectorCredentialsException {
       ConnectorCredentialsProvider provider = resolve(context.getConnectorCredentialsProviderName());
       if (!provider.getSupportedChannels().contains(context.getChannel())) {

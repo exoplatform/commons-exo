@@ -36,7 +36,7 @@
    <description>Shared contract for pluggable connector credentials providers (Personal, technical account, OAuth...) consumed by connectors (email, CalDAV, CardDAV) to obtain channel-typed, ready-to-use credentials material.</description>
 
    <properties>
-      <exo.test.coverage.ratio>0.90</exo.test.coverage.ratio>
+      <exo.test.coverage.ratio>0.93</exo.test.coverage.ratio>
    </properties>
 
    <dependencies>
@@ -51,6 +51,42 @@
       <dependency>
          <groupId>org.springframework</groupId>
          <artifactId>spring-context</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <!-- The module carries its own .rest layer (the provider list the admin UI reads),
+           so it needs the web and security annotations. Provided: the platform supplies
+           them at runtime, and a provided scope carries no transitives to the connectors
+           that depend on this module. -->
+      <dependency>
+         <groupId>org.springframework</groupId>
+         <artifactId>spring-webmvc</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <dependency>
+         <groupId>org.springframework.security</groupId>
+         <artifactId>spring-security-core</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <!-- The provider configuration is stored through SettingService, with its secret
+           fields encrypted by the platform's own codec. Provided, like everything else
+           here: the platform supplies both at runtime. -->
+      <dependency>
+         <groupId>io.meeds.portal</groupId>
+         <artifactId>portal.component.api</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <!-- io.meeds.common.ContainerTransactional, to compile the annotation. The aspect
+           that reads it is woven by the parent pom's aspectj-maven-plugin, which resolves
+           portal.component.common as an aspectLibrary on its own, in every module of this
+           repo - this dependency neither enables nor is needed by that weaving. -->
+      <dependency>
+         <groupId>io.meeds.portal</groupId>
+         <artifactId>portal.component.common</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <dependency>
+         <groupId>io.meeds.portal</groupId>
+         <artifactId>portal.component.web.security</artifactId>
          <scope>provided</scope>
       </dependency>
       <dependency>
