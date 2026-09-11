@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -161,4 +162,34 @@ public class ConnectorCredentialsServiceTest {
       assertThrows(ConnectorCredentialsException.class, () -> service.resolveTargetIdentity(context));
    }
 
+
+   /**
+    * The admin UI reads this list to offer the choice of a provider, so its order must
+    * not depend on which WAR happened to announce itself first: providers register from
+    * their own @PostConstruct into a ConcurrentHashMap, whose iteration order is
+    * neither declaration order nor stable across restarts. Sorted by name, the same
+    * instance always shows the same list.
+    */
+   @Test
+   public void testGetProvidersIsSortedByNameWhateverTheRegistrationOrder() {
+      ConnectorCredentialsService service = serviceWith(provider("personal", EnumSet.of(ConnectorCredentialsChannel.IMAP)),
+                                                        provider("bluemind-sudo",
+                                                                 EnumSet.allOf(ConnectorCredentialsChannel.class)));
+
+      assertEquals(List.of("bluemind-sudo", "personal"),
+                   service.getProviders().stream().map(ConnectorCredentialsProvider::getName).toList(),
+                   "announced personal first, listed bluemind-sudo first: the order is the name's, not the registration's");
+   }
+
+   /**
+    * The list is a view onto the service's own registry, handed to a REST layer that
+    * has no business adding to it.
+    */
+   @Test
+   public void testGetProvidersCannotBeAddedTo() {
+      ConnectorCredentialsService service = serviceWith(provider("personal", EnumSet.of(ConnectorCredentialsChannel.IMAP)));
+
+      assertThrows(UnsupportedOperationException.class,
+                   () -> service.getProviders().add(provider("smuggled", EnumSet.noneOf(ConnectorCredentialsChannel.class))));
+   }
 }

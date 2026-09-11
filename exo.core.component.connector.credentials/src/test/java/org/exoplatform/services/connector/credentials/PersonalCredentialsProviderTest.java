@@ -204,4 +204,17 @@ public class PersonalCredentialsProviderTest {
       assertNull(providerWith(emailSource(null)).resolveTargetIdentity(context));
    }
 
+
+   /**
+    * The promise the default method exists for: Personal has nothing for an
+    * administrator to configure, so a connector selecting it renders no extra field.
+    * Only a provider that carries its own configuration overrides this.
+    */
+   @Test
+   void personalHasNothingToConfigure() {
+      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(new ConnectorCredentialsService());
+
+      assertTrue(provider.getConfigurationFields().isEmpty(),
+                 "Personal requires the user's own credentials, never an administrator's configuration");
+   }
 }

@@ -23,6 +23,7 @@ const config = {
   },
   entry: {
     eXoPlatformGamificationConnectorExtensions: './src/main/webapp/vue-app/gamification-connectorExtensions/extensions.js',
+    credentialsProviderConfig: './src/main/webapp/vue-app/credentials-config/main.js',
   },
   output: {
     path: path.join(__dirname, 'target/commons-exo-extension/'),
