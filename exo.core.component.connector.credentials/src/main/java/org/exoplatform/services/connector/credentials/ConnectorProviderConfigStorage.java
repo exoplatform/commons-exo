@@ -56,8 +56,25 @@ public interface ConnectorProviderConfigStorage {
 
    void store(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException;
 
+   /**
+    * The stored configuration, secrets in clear.
+    * <p>
+    * <b>Never null</b>: an empty map when nothing is stored, so a caller reads keys
+    * without guarding, and a missing key means a missing value rather than a missing
+    * configuration.
+    *
+    * @param context the connector and provider to read for
+    * @return the stored values, possibly empty
+    * @throws ConnectorCredentialsException when a stored secret cannot be decoded
+    */
    Map<String, String> readDecrypted(ConnectorCredentialsContext context) throws ConnectorCredentialsException;
 
+   /**
+    * The same, with every secret field left out. <b>Never null</b>, like the above.
+    *
+    * @param context the connector and provider to read for
+    * @return the stored non-secret values, possibly empty
+    */
    Map<String, String> readWithoutSecrets(ConnectorCredentialsContext context);
 
    void delete(ConnectorCredentialsContext context);
