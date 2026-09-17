@@ -148,6 +148,24 @@ public class ConnectorCredentialsService {
    }
 
    /**
+    * Whether the named provider needs something from the user before it can produce
+    * anything - a password to type, an authorization to grant.
+    * <p>
+    * Exposed one provider at a time, deliberately: the callers are the connector
+    * add-ons answering their own users, and a user cannot read the provider registry
+    * (its REST endpoint is reserved to administrators). Relaying this single boolean
+    * lets a connect button decide whether to ask for anything, without handing an end
+    * user the list of configured providers.
+    *
+    * @param providerName the provider a connector is configured with
+    * @return true when the user has something to supply
+    * @throws ConnectorCredentialsException if no provider is registered under that name
+    */
+   public boolean requiresUserAction(String providerName) throws ConnectorCredentialsException {
+      return resolve(providerName).requiresUserAction();
+   }
+
+   /**
     * Invalidates any material the resolved provider may have cached for the given
     * context. A no-op if the context names no registered provider - this is a
     * best-effort cleanup called after a failure has already occurred, not a place
