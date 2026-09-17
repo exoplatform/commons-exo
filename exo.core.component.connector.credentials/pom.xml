@@ -36,7 +36,7 @@
    <description>Shared contract for pluggable connector credentials providers (Personal, technical account, OAuth...) consumed by connectors (email, CalDAV, CardDAV) to obtain channel-typed, ready-to-use credentials material.</description>
 
    <properties>
-      <exo.test.coverage.ratio>0.93</exo.test.coverage.ratio>
+      <exo.test.coverage.ratio>0.95</exo.test.coverage.ratio>
    </properties>
 
    <dependencies>
@@ -87,6 +87,13 @@
       <dependency>
          <groupId>io.meeds.portal</groupId>
          <artifactId>portal.component.web.security</artifactId>
+         <scope>provided</scope>
+      </dependency>
+      <!-- OrganizationService, to read the email of the user a provider impersonates.
+           Reached transitively today; declared because we call it directly. -->
+      <dependency>
+         <groupId>io.meeds.core</groupId>
+         <artifactId>exo.core.component.organization.api</artifactId>
          <scope>provided</scope>
       </dependency>
       <dependency>
