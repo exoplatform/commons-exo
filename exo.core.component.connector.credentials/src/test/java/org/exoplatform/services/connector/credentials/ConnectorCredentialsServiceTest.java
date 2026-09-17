@@ -17,7 +17,9 @@
 package org.exoplatform.services.connector.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -191,5 +193,32 @@ class ConnectorCredentialsServiceTest {
 
       assertThrows(UnsupportedOperationException.class,
                    () -> service.getProviders().add(provider("smuggled", EnumSet.noneOf(ConnectorCredentialsChannel.class))));
+   }
+
+   /**
+    * Whether a connector asks its user for anything is a property of the provider, and
+    * the people who need the answer are the users themselves - the connect button has to
+    * know whether to open a form. They cannot read the provider registry: its REST
+    * endpoint is reserved to administrators. So the question is answerable here, one
+    * provider at a time, and the connector add-ons relay just that one bit.
+    */
+   @Test
+   void answersWhetherAProviderAsksTheUserForAnything() throws Exception {
+      ConnectorCredentialsProvider asking = provider("asks", EnumSet.allOf(ConnectorCredentialsChannel.class));
+      when(asking.requiresUserAction()).thenReturn(true);
+      ConnectorCredentialsProvider silent = provider("asks-nothing", EnumSet.allOf(ConnectorCredentialsChannel.class));
+      when(silent.requiresUserAction()).thenReturn(false);
+      ConnectorCredentialsService service = serviceWith(asking, silent);
+
+      assertTrue(service.requiresUserAction("asks"));
+      assertFalse(service.requiresUserAction("asks-nothing"));
+   }
+
+   /** An unknown name is refused exactly as every other resolution is. */
+   @Test
+   void refusesToAnswerForAnUnknownProvider() {
+      ConnectorCredentialsService service = serviceWith();
+
+      assertThrows(ConnectorCredentialsException.class, () -> service.requiresUserAction("nobody"));
    }
 }
