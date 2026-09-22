@@ -183,6 +183,8 @@ public class PersonalCredentialsProvider implements ConnectorCredentialsProvider
 
    private ConnectorCredentials toMaterial(ConnectorCredentialsChannel channel, RawCredentials credentials) {
       if (channel == ConnectorCredentialsChannel.HTTP) {
+         // RFC 7617: the user-id must carry no colon, or the server splits the pair at the
+         // wrong place - a constraint on what the connector stores (see RawCredentials).
          String token = Base64.getEncoder()
                                .encodeToString((credentials.getUsername() + ":" + credentials.getSecret()).getBytes(StandardCharsets.UTF_8));
          return new HttpConnectorCredentials("Basic " + token, null);

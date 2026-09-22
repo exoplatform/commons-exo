@@ -21,6 +21,12 @@ package org.exoplatform.services.connector.credentials;
  * before {@link PersonalCredentialsProvider} wraps it into channel-typed material.
  * Deliberately not reused elsewhere in the contract: every other provider produces
  * {@link ConnectorCredentials} directly, without an intermediate raw-pair step.
+ * <p>
+ * The username must not contain a colon: on the HTTP channel the pair becomes a
+ * Basic {@code Authorization} header, {@code username:secret}, and RFC 7617 forbids
+ * a colon in the user-id - a server splits at the first one and the request fails
+ * with a 401 the user cannot explain. A connector storing a remote account name
+ * enforces that where the name is typed.
  */
 public class RawCredentials {
 

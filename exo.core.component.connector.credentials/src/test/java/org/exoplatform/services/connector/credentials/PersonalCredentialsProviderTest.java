@@ -32,7 +32,9 @@ import javax.mail.PasswordAuthentication;
 
 import org.junit.jupiter.api.Test;
 
-public class PersonalCredentialsProviderTest {
+import jakarta.annotation.PostConstruct;
+
+class PersonalCredentialsProviderTest {
 
    private static final String TEST_USER = "testuser";
 
@@ -72,7 +74,7 @@ public class PersonalCredentialsProviderTest {
     * the order the platform happened to deploy its WARs in.
     */
    @Test
-   public void testASecondSourceForOneKindDoesNotReplaceTheFirst() {
+   void testASecondSourceForOneKindDoesNotReplaceTheFirst() {
       PersonalCredentialsSource first = emailSource(new RawCredentials("first@acme.com", "s1"));
       PersonalCredentialsSource second = emailSource(new RawCredentials("second@acme.com", "s2"));
       PersonalCredentialsProvider provider = providerWith(first, second);
@@ -87,13 +89,13 @@ public class PersonalCredentialsProviderTest {
    }
 
    @Test
-   public void testGetName() {
+   void testGetName() {
       PersonalCredentialsProvider provider = providerWith();
       assertEquals("personal", provider.getName());
    }
 
    @Test
-   public void testGetSupportedChannels() {
+   void testGetSupportedChannels() {
       PersonalCredentialsProvider provider = providerWith();
       Set<ConnectorCredentialsChannel> channels = provider.getSupportedChannels();
       assertTrue(channels.contains(ConnectorCredentialsChannel.IMAP));
@@ -102,13 +104,13 @@ public class PersonalCredentialsProviderTest {
    }
 
    @Test
-   public void testRequiresUserAction() {
+   void testRequiresUserAction() {
       PersonalCredentialsProvider provider = providerWith();
       assertTrue(provider.requiresUserAction());
    }
 
    @Test
-   public void testProduceImapWrapsMailConnectorCredentials() throws Exception {
+   void testProduceImapWrapsMailConnectorCredentials() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
       PersonalCredentialsProvider provider = providerWith(source);
 
@@ -124,7 +126,7 @@ public class PersonalCredentialsProviderTest {
    }
 
    @Test
-   public void testProduceHttpWrapsHttpConnectorCredentials() throws Exception {
+   void testProduceHttpWrapsHttpConnectorCredentials() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("caldavUser", "secret"));
       PersonalCredentialsProvider provider = providerWith(source);
 
@@ -138,7 +140,7 @@ public class PersonalCredentialsProviderTest {
    }
 
    @Test
-   public void testProduceThrowsWhenNoSourceForConnectorKind() {
+   void testProduceThrowsWhenNoSourceForConnectorKind() {
       PersonalCredentialsProvider provider = providerWith();
 
       ConnectorCredentialsContext context =
@@ -147,7 +149,7 @@ public class PersonalCredentialsProviderTest {
    }
 
    @Test
-   public void testProduceThrowsWhenSourceHasNoCredentials() {
+   void testProduceThrowsWhenSourceHasNoCredentials() {
       PersonalCredentialsSource source = emailSource(null);
       PersonalCredentialsProvider provider = providerWith(source);
 
@@ -156,16 +158,56 @@ public class PersonalCredentialsProviderTest {
       assertThrows(ConnectorCredentialsException.class, () -> provider.produce(context));
    }
 
+   /**
+    * invalidate() is a no-op because nothing is cached here: the material after it is
+    * the same material as before, rebuilt from the source. Asserted on the HTTP channel,
+    * whose header is an equals-comparable String, and on the identity. Mutation-verified:
+    * an invalidate that clears the sources map makes the second produce() throw.
+    */
    @Test
-   public void testInvalidateIsANoOp() {
-      PersonalCredentialsProvider provider = providerWith();
+   void testInvalidateLeavesTheMaterialProducibleAfterwards() throws Exception {
+      PersonalCredentialsSource source = emailSource(new RawCredentials("caldavUser", "secret"));
+      PersonalCredentialsProvider provider = providerWith(source);
       ConnectorCredentialsContext context =
-                                          new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
+                                          new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.HTTP, "email");
+      String before = ((HttpConnectorCredentials) provider.produce(context)).getAuthorizationHeaderValue();
+
       provider.invalidate(context);
+
+      assertEquals(before, ((HttpConnectorCredentials) provider.produce(context)).getAuthorizationHeaderValue());
+      assertEquals("caldavUser", provider.resolveTargetIdentity(context));
+   }
+
+   /**
+    * The one call that puts anything under the name "personal" at runtime: the
+    * provider announces itself to the resolution service from its own
+    * {@code @PostConstruct}, nothing in XML or kernel configuration does. Two
+    * assertions, each for its own mutant: the behavioural half fails when register()
+    * no longer calls the service (the name resolves to nothing); the reflective half
+    * fails when the {@code @PostConstruct} annotation is removed, which the behavioural
+    * half cannot see because a test calls register() by hand. Neither is redundant.
+    */
+   @Test
+   void testRegisterAnnouncesItselfToTheServiceFromPostConstruct() throws Exception {
+      ConnectorCredentialsService service = new ConnectorCredentialsService();
+      PersonalCredentialsProvider provider = new PersonalCredentialsProvider(service);
+      provider.register(emailSource(new RawCredentials("user@example.com", "secret")));
+      ConnectorCredentialsContext context = new ConnectorCredentialsContext(1L,
+                                                                            PersonalCredentialsProvider.NAME,
+                                                                            TEST_USER,
+                                                                            ConnectorCredentialsChannel.IMAP,
+                                                                            "email");
+      assertThrows(ConnectorCredentialsException.class, () -> service.resolveTargetIdentity(context), "not announced yet");
+
+      provider.register();
+
+      assertEquals("user@example.com", service.resolveTargetIdentity(context));
+      assertTrue(PersonalCredentialsProvider.class.getMethod("register").isAnnotationPresent(PostConstruct.class),
+                 "the platform calls register() through @PostConstruct, nothing else does");
    }
 
    @Test
-   public void testResolveTargetIdentityAnswersTheStoredRemoteAccount() {
+   void testResolveTargetIdentityAnswersTheStoredRemoteAccount() {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
       PersonalCredentialsProvider provider = providerWith(source);
 
@@ -180,7 +222,7 @@ public class PersonalCredentialsProviderTest {
     * wrong data. Both read the same source, and this pins that.
     */
    @Test
-   public void testResolveTargetIdentityMatchesWhatProduceAuthenticatesAs() throws Exception {
+   void testResolveTargetIdentityMatchesWhatProduceAuthenticatesAs() throws Exception {
       PersonalCredentialsSource source = emailSource(new RawCredentials("user@example.com", "secret"));
       PersonalCredentialsProvider provider = providerWith(source);
 
@@ -196,7 +238,7 @@ public class PersonalCredentialsProviderTest {
     * name is fatal for what it was building.
     */
    @Test
-   public void testResolveTargetIdentityAnswersNullWhenNothingIsConfigured() {
+   void testResolveTargetIdentityAnswersNullWhenNothingIsConfigured() {
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.HTTP, "email");
 
