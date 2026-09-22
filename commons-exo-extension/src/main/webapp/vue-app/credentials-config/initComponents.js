@@ -16,9 +16,11 @@
  */
 
 import ProviderConfigFields from './components/ProviderConfigFields.vue';
+import ManagedConnectorDrawer from './components/ManagedConnectorDrawer.vue';
 
 const components = {
   'provider-config-fields': ProviderConfigFields,
+  'managed-connector-drawer': ManagedConnectorDrawer,
 };
 
 for (const name in components) {
