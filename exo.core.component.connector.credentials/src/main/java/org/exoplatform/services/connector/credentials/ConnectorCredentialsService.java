@@ -80,6 +80,14 @@ public class ConnectorCredentialsService {
 
    /**
     * Produces ready-to-use credentials material for the given context.
+    * <p>
+    * <b>Entitlement is the caller's.</b> This service performs no check of its own
+    * that the caller may act for {@code context.getUsername()}: the context is a
+    * plain value anyone holding this bean can build, and the bean is published to
+    * every WAR by the Kernel bridge. A caller passes a username it has already
+    * established it may act for - the authenticated user of its request, the owner
+    * of the mailbox its job runs for - and never one taken from a client. A provider
+    * may assume the same of the context it is handed.
     *
     * @throws ConnectorCredentialsException if no provider is registered under the
     *            context's provider name, if that provider does not support the
@@ -105,6 +113,9 @@ public class ConnectorCredentialsService {
     * The channel is deliberately not checked, unlike {@link #produce(ConnectorCredentialsContext)}:
     * the account a provider would address does not depend on the channel it is asked
     * to speak, and a caller resolving an identity has no material to mistype.
+    * <p>
+    * Entitlement is the caller's here too, as for {@link #produce(ConnectorCredentialsContext)}:
+    * no check is made that the caller may act for {@code context.getUsername()}.
     *
     * @throws ConnectorCredentialsException if no provider is registered under the
     *            context's provider name

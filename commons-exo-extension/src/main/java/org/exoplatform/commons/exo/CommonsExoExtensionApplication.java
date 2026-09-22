@@ -29,8 +29,9 @@ import io.meeds.spring.kernel.PortalApplicationContextInitializer;
  * Spring Boot bootstrap of commons-exo-extension - a pre-existing, always-deployed
  * webapp (legacy kernel components: cache configuration for core services such as
  * SettingService) that had no Spring context of its own until now. This is where
- * commons-exo's own shared beans (e.g. {@code ConnectorCredentialsConfiguration} in
- * {@code exo.core.component.connector.credentials}) get their Spring wiring: this
+ * commons-exo's own shared beans ({@code ConnectorCredentialsService} and
+ * {@code PersonalCredentialsProvider} in {@code exo.core.component.connector.credentials})
+ * get their Spring wiring: this
  * module is core platform infrastructure, never an optional add-on, so it is the
  * right place to own that wiring once instead of every connector add-on redeclaring
  * it, or - worse - a self-contained library jar auto-configuring on every Spring

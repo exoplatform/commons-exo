@@ -29,7 +29,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-public class ConnectorCredentialsServiceTest {
+class ConnectorCredentialsServiceTest {
 
    private static final String TEST_USER = "testuser";
 
@@ -57,7 +57,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testRegisterThrowsOnDuplicateProviderName() {
+   void testRegisterThrowsOnDuplicateProviderName() {
       ConnectorCredentialsProvider first = provider("personal", EnumSet.allOf(ConnectorCredentialsChannel.class));
       ConnectorCredentialsProvider second = provider("personal", EnumSet.allOf(ConnectorCredentialsChannel.class));
 
@@ -65,7 +65,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testProduceDelegatesToResolvedProvider() throws Exception {
+   void testProduceDelegatesToResolvedProvider() throws Exception {
       ConnectorCredentialsProvider provider = provider("personal", EnumSet.of(ConnectorCredentialsChannel.IMAP));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -78,7 +78,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testProduceThrowsWhenNoProviderRegisteredForName() {
+   void testProduceThrowsWhenNoProviderRegisteredForName() {
       ConnectorCredentialsService service = serviceWith();
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -87,7 +87,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testProduceThrowsWhenProviderDoesNotSupportChannel() {
+   void testProduceThrowsWhenProviderDoesNotSupportChannel() {
       ConnectorCredentialsProvider provider = provider("bluemind-sudo", EnumSet.of(ConnectorCredentialsChannel.HTTP));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "bluemind-sudo", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -98,7 +98,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testInvalidateDelegatesToResolvedProvider() {
+   void testInvalidateDelegatesToResolvedProvider() {
       ConnectorCredentialsProvider provider = provider("personal", EnumSet.allOf(ConnectorCredentialsChannel.class));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "personal", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -110,7 +110,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testInvalidateIsANoOpWhenNoProviderRegisteredForName() {
+   void testInvalidateIsANoOpWhenNoProviderRegisteredForName() {
       ConnectorCredentialsProvider provider = provider("personal", EnumSet.allOf(ConnectorCredentialsChannel.class));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "unknown", TEST_USER, ConnectorCredentialsChannel.IMAP, "email");
@@ -122,7 +122,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testResolveTargetIdentityDelegatesToResolvedProvider() throws Exception {
+   void testResolveTargetIdentityDelegatesToResolvedProvider() throws Exception {
       ConnectorCredentialsProvider provider = provider("bluemind-sudo", EnumSet.of(ConnectorCredentialsChannel.HTTP));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "bluemind-sudo", TEST_USER, ConnectorCredentialsChannel.HTTP, "caldav");
@@ -139,7 +139,7 @@ public class ConnectorCredentialsServiceTest {
     * URL must not be refused because the provider happens not to serve, say, SMTP.
     */
    @Test
-   public void testResolveTargetIdentityDoesNotCheckTheChannel() throws Exception {
+   void testResolveTargetIdentityDoesNotCheckTheChannel() throws Exception {
       ConnectorCredentialsProvider provider = provider("bluemind-sudo", EnumSet.of(ConnectorCredentialsChannel.HTTP));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "bluemind-sudo", TEST_USER, ConnectorCredentialsChannel.SMTP, "caldav");
@@ -151,7 +151,7 @@ public class ConnectorCredentialsServiceTest {
    }
 
    @Test
-   public void testResolveTargetIdentityThrowsWhenNoProviderRegisteredForName() {
+   void testResolveTargetIdentityThrowsWhenNoProviderRegisteredForName() {
       ConnectorCredentialsProvider provider = provider("personal", EnumSet.allOf(ConnectorCredentialsChannel.class));
       ConnectorCredentialsContext context =
                                           new ConnectorCredentialsContext(1L, "unknown", TEST_USER, ConnectorCredentialsChannel.HTTP, "caldav");
