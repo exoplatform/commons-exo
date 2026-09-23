@@ -265,13 +265,73 @@ class BluemindSessionStorageTest {
    void declaresTheExpiryTheStoreKeeps() throws Exception {
       CachedSession session = storage.sudoSession(ALICE, SECRET);
 
-      assertEquals(session.openedAtMillis() + 600_000L, storage.expiresAtMillis(session));
+      assertEquals(Long.valueOf(session.openedAtMillis() + 600_000L), storage.expiresAtMillis(session));
    }
 
    /** The session id is a credential: it never shows in a log line. */
    @Test
    void neverPrintsTheSessionId() throws Exception {
       assertFalse(storage.sudoSession(ALICE, SECRET).toString().contains("sid-alice"));
+   }
+
+   /**
+    * Round 1: the repair of a stale technical session drops that session only. Here
+    * another thread already replaced it while this call's sudo was being refused: the
+    * replacement survives, and no third login is spent.
+    */
+   @Test
+   void repairingAStaleTechnicalSessionSparesTheOneAnotherThreadOpened() throws Exception {
+      TechnicalKey technicalKey = new TechnicalKey(API, TECH);
+      storage.technicalSession(technicalKey, SECRET);
+      now.addAndGet(1_000L);
+      when(bluemind.login(API, TECH, SECRET)).thenReturn(new BluemindSession("sid-tech-2", "latd"));
+      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenAnswer(invocation -> {
+         // Another consumer, refused a moment earlier, has already repaired it.
+         storage.evictTechnicalSession(technicalKey);
+         storage.technicalSession(technicalKey, SECRET);
+         throw new BluemindAuthenticationException("BlueMind answered HTTP 401 on /api/auth/_su");
+      });
+      when(bluemind.sudo(API, "sid-tech-2", "alice@example.com")).thenReturn(new BluemindSession("sid-alice", "latd"));
+
+      assertEquals("sid-alice", storage.sudoSession(ALICE, SECRET).sessionId());
+
+      verify(bluemind, times(2)).login(API, TECH, SECRET);
+   }
+
+   /** Round 1: a loader failing with an Error releases every waiter instead of leaving them blocked. */
+   @Test
+   void anErrorInTheLoaderReleasesEveryWaiter() throws Exception {
+      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenAnswer(invocation -> {
+         Thread.sleep(200);
+         throw new AssertionError("loader broke");
+      });
+      for (Future<CachedSession> session : runConcurrently(3)) {
+         assertThrows(ExecutionException.class, () -> session.get(5, TimeUnit.SECONDS));
+      }
+   }
+
+   /**
+    * Round 1: a full store makes room by dropping its expired entries - without it, a
+    * store that has once been full would keep nothing any more.
+    */
+   @Test
+   void aFullStoreMakesRoomByDroppingExpiredEntries() throws Exception {
+      storage = new BluemindSessionStorage(bluemind, 600, 1, now::get);
+      storage.sudoSession(ALICE, SECRET);
+      now.addAndGet(600_000L);
+
+      storage.sudoSession(BOB, SECRET);
+      storage.sudoSession(BOB, SECRET);
+
+      verify(bluemind, times(1)).sudo(org.mockito.ArgumentMatchers.eq(API), anyString(), org.mockito.ArgumentMatchers.eq("bob@example.com"));
+   }
+
+   /** Round 1: a store that keeps nothing declares no expiry for what it produced. */
+   @Test
+   void aZeroLifetimeDeclaresNoExpiry() throws Exception {
+      storage = new BluemindSessionStorage(bluemind, 0, 10000, now::get);
+
+      assertEquals(null, storage.expiresAtMillis(storage.sudoSession(ALICE, SECRET)));
    }
 
    private List<Future<CachedSession>> runConcurrently(int threads) {

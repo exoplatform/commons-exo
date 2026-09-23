@@ -155,7 +155,9 @@ public class BluemindSessionStorage {
                throw e;
             }
             LOG.debug("Sudo as {} refused with a kept technical session; retrying once with a fresh login", key.target(), e);
-            evictTechnicalSession(key.technical());
+            // Only the session that was refused: another thread may already have
+            // replaced it with a fresh one, which must survive this repair.
+            technicalSessions.evict(key.technical(), technical);
             CachedSession fresh = technicalSession(key.technical(), technicalSecret);
             CachedSession session = open(bluemindAuthClient.sudo(key.apiUrl(), fresh.sessionId(), key.target()).authKey());
             LOG.debug("Opened a BlueMind session as {} on {} after a fresh technical login", key.target(), key.apiUrl());
@@ -185,13 +187,14 @@ public class BluemindSessionStorage {
    /**
     * When material produced from a target session should be considered stale: the
     * moment its entry expires, so a caller never holds material the store has already
-    * let go of.
+    * let go of. None when the store keeps nothing (zero lifetime): the session's own
+    * life is BlueMind's, and unknown here.
     *
     * @param session the target session
-    * @return the expiry, in epoch milliseconds
+    * @return the expiry, in epoch milliseconds, or null when the store keeps nothing
     */
-   public long expiresAtMillis(CachedSession session) {
-      return session.openedAtMillis() + ttlMillis;
+   public Long expiresAtMillis(CachedSession session) {
+      return ttlMillis == 0 ? null : session.openedAtMillis() + ttlMillis;
    }
 
    private CachedSession open(String sessionId) {
@@ -215,9 +218,12 @@ public class BluemindSessionStorage {
 
       private final Map<K, CompletableFuture<CachedSession>> inFlight = new ConcurrentHashMap<>();
 
+      /** When a full store may next scan for expired entries: a store full of live ones is not rescanned on every production. */
+      private volatile long                                  nextPurgeAt;
+
       CachedSession get(K key, Opening opening) throws ConnectorCredentialsException {
-         CachedSession session = kept.get(key);
-         if (session != null && !expired(session)) {
+         CachedSession session = live(key);
+         if (session != null) {
             return session;
          }
          CompletableFuture<CachedSession> mine = new CompletableFuture<>();
@@ -226,13 +232,18 @@ public class BluemindSessionStorage {
             return await(running);
          }
          try {
-            CachedSession opened = opening.open();
-            keep(key, opened);
+            // Re-read once the load is ours: a load that completed between the first
+            // read and the claim has already kept its session.
+            CachedSession alreadyKept = live(key);
+            CachedSession opened = alreadyKept != null ? alreadyKept : opening.open();
+            if (alreadyKept == null) {
+               keep(key, opened);
+            }
             mine.complete(opened);
             return opened;
-         } catch (ConnectorCredentialsException | RuntimeException e) {
-            mine.completeExceptionally(e);
-            throw e;
+         } catch (Throwable t) { // NOSONAR - every waiter must be released, whatever the loader threw
+            mine.completeExceptionally(t);
+            throw t;
          } finally {
             inFlight.remove(key, mine);
          }
@@ -242,12 +253,34 @@ public class BluemindSessionStorage {
          kept.remove(key);
       }
 
+      /** Drops the entry only while it is still the given session. */
+      void evict(K key, CachedSession stale) {
+         kept.remove(key, stale);
+      }
+
+      /** The kept session when it is still alive; an expired one is dropped on the way. */
+      private CachedSession live(K key) {
+         CachedSession session = kept.get(key);
+         if (session == null) {
+            return null;
+         }
+         if (expired(session)) {
+            kept.remove(key, session);
+            return null;
+         }
+         return session;
+      }
+
       private void keep(K key, CachedSession session) {
          if (ttlMillis == 0) {
             return;
          }
          if (kept.size() >= maxSessions && !kept.containsKey(key)) {
-            kept.values().removeIf(BluemindSessionStorage.this::expired);
+            long now = clock.getAsLong();
+            if (now >= nextPurgeAt) {
+               kept.values().removeIf(BluemindSessionStorage.this::expired);
+               nextPurgeAt = now + Math.max(1000L, ttlMillis / 10);
+            }
             if (kept.size() >= maxSessions) {
                return;
             }
