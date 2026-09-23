@@ -154,6 +154,10 @@ public class BluemindAuthClient {
    private String send(HttpRequest request) throws ConnectorCredentialsException {
       try {
          HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+         if (response.statusCode() == 401 || response.statusCode() == 403) {
+            throw new BluemindAuthenticationException("BlueMind answered HTTP " + response.statusCode() + " on "
+                + request.uri().getPath());
+         }
          if (response.statusCode() / 100 != 2) {
             throw new ConnectorCredentialsException("BlueMind answered HTTP " + response.statusCode() + " on "
                 + request.uri().getPath());
