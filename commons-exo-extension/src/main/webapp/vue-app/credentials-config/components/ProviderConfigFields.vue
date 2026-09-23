@@ -211,8 +211,19 @@ export default {
         };
       });
     },
+    /**
+     * The field's validation rules, the same as valid() applies: a required SECRET
+     * left blank on a connector whose secrets are stored keeps the stored one, so it
+     * is not flagged "required".
+     *
+     * @param {object} field the field descriptor
+     * @returns {Array} the Vuetify rules
+     */
     rulesOf(field) {
-      return field.required && [v => !!v || this.$t('credentialsProviderConfig.field.required')] || [];
+      if (!field.required || (field.type === 'SECRET' && this.secretsStored)) {
+        return [];
+      }
+      return [v => !!v || this.$t('credentialsProviderConfig.field.required')];
     },
     reveal(key) {
       this.$set(this.revealed, key, !this.revealed[key]);
