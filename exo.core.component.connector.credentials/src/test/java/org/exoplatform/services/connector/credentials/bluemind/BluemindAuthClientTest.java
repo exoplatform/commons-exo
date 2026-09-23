@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Flow;
@@ -189,6 +190,31 @@ class BluemindAuthClientTest {
    void refusesWhenBlueMindCannotBeReached() throws Exception {
       when(transport.<String> send(any(), any())).thenThrow(new IOException("connection refused"));
 
+      assertThrows(ConnectorCredentialsException.class, () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
+   }
+
+   /**
+    * A BlueMind that accepts the connection and never answers must not hold the thread:
+    * both requests carry a deadline, the transport connects within a bounded time, and a
+    * timeout surfaces as the connector's failure.
+    */
+   @Test
+   void neitherCallWaitsForeverOnASilentServer() throws Exception {
+      assertEquals(BluemindAuthClient.CONNECT_TIMEOUT, BluemindAuthClient.defaultTransport().connectTimeout().orElse(null));
+
+      givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-tech\"}");
+      client.login(API_URL, "exo.service@acme.com", "s3cr3t");
+      assertEquals(BluemindAuthClient.REQUEST_TIMEOUT, captureRequest().timeout().orElse(null), "the login has a deadline");
+
+      transport = mock(HttpClient.class);
+      client = new BluemindAuthClient(transport);
+      givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-alice\"}");
+      client.sudo(API_URL, "sid-tech", "alice@acme.com");
+      assertEquals(BluemindAuthClient.REQUEST_TIMEOUT, captureRequest().timeout().orElse(null), "the sudo has a deadline");
+
+      transport = mock(HttpClient.class);
+      client = new BluemindAuthClient(transport);
+      when(transport.<String> send(any(), any())).thenThrow(new HttpTimeoutException("request timed out"));
       assertThrows(ConnectorCredentialsException.class, () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
    }
 
