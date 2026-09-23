@@ -271,11 +271,12 @@ public class SettingProviderConfigStorageTest {
    /**
     * The administration form never receives the stored secret (readWithoutSecrets omits
     * it), so it always posts that field back empty. Taking that emptiness literally
-    * would wipe the secret on every unrelated edit - the login, the target field - and
+    * would wipe the secret on every unrelated edit - the target field, the connector's name - and
     * the connector would stop authenticating for a reason nothing in the screen shows.
     */
    @Test
    void aSecretLeftBlankOnUpdateKeepsTheStoredOne() throws Exception {
+      givenStored("technicalLogin", "svc2");
       givenStored("technicalSecret", "ENC(s3cret)");
 
       storage.store(context(), configurationWithSecret(""));
@@ -285,6 +286,43 @@ public class SettingProviderConfigStorageTest {
                                           eq("bluemind-sudo/email/2/technicalSecret"),
                                           any(SettingValue.class));
       verify(codec, never()).encode("");
+   }
+
+   /**
+    * A stored secret is kept only with the free-text values it was typed with. Here the
+    * login changes and the secret is left blank: kept, the next produce() would present
+    * the old secret for another account, or send it to another host had the API URL
+    * changed. So the blank secret is missing, and nothing is written.
+    */
+   @Test
+   void aSecretLeftBlankIsNotKeptWhenATextValueChanges() {
+      givenStored("technicalLogin", "svc1");
+      givenStored("technicalSecret", "ENC(s3cret)");
+
+      ConnectorCredentialsException thrown = assertThrows(ConnectorCredentialsException.class,
+                                                          () -> storage.store(context(), configurationWithSecret("")));
+
+      assertEquals(SettingProviderConfigStorage.MISSING_FIELD, thrown.getMessage());
+      verify(settingService, never()).set(any(Context.class), any(Scope.class), anyString(), any(SettingValue.class));
+      assertEquals(SettingProviderConfigStorage.MISSING_FIELD,
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.validate(context(), configurationWithSecret(""))).getMessage(),
+                   "validate refuses what store refuses");
+   }
+
+   /** A CHOICE change keeps the stored secret: a closed list names no host and no account. */
+   @Test
+   void aSecretLeftBlankIsKeptWhenOnlyAChoiceChanges() throws Exception {
+      givenStored("technicalLogin", "svc2");
+      givenStored("targetLoginField", "username");
+      givenStored("technicalSecret", "ENC(s3cret)");
+
+      storage.store(context(), configurationWithSecret(""));
+
+      verify(settingService, never()).set(eq(Context.GLOBAL),
+                                          any(Scope.class),
+                                          eq("bluemind-sudo/email/2/technicalSecret"),
+                                          any(SettingValue.class));
    }
 
    /** Nothing stored yet: an empty required secret is the first-save case, and missing. */
@@ -416,6 +454,7 @@ public class SettingProviderConfigStorageTest {
     */
    @Test
    void validateAcceptsABlankSecretWhenOneIsStored() {
+      givenStored("technicalLogin", "svc2");
       givenStored("technicalSecret", "ENC(s3cret)");
 
       assertDoesNotThrow(() -> storage.validate(context(), configurationWithSecret("")));

@@ -54,6 +54,24 @@ public interface ConnectorProviderConfigStorage {
     */
    void validate(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException;
 
+   /**
+    * Writes a configuration, after the same checks as
+    * {@link #validate(ConnectorCredentialsContext, Map)}.
+    * <p>
+    * A blank SECRET keeps the stored one only while every non-secret value is unchanged.
+    * An update that moves the API URL or the login must carry the secret again.
+    * <p>
+    * <b>Entitlement is the caller's.</b> This storage checks no administrator: the bean is
+    * published to every WAR, and whoever calls it decides who may write. Its two callers
+    * write it only from operations that check the administrator first
+    * ({@code CaldavServerService} for a CalDAV server, {@code EmailConnectorService} for an
+    * email connector). A new caller does the same.
+    *
+    * @param context the connector and provider the values are for
+    * @param values what was posted, keyed by descriptor field
+    * @throws ConnectorCredentialsException carrying a message code on the refusals of
+    *           validate, or when the codec cannot encode a secret
+    */
    void store(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException;
 
    /**
@@ -77,6 +95,14 @@ public interface ConnectorProviderConfigStorage {
     */
    Map<String, String> readWithoutSecrets(ConnectorCredentialsContext context);
 
+   /**
+    * Removes a connector's configuration for the context's provider.
+    * <p>
+    * Entitlement is the caller's, as for
+    * {@link #store(ConnectorCredentialsContext, Map)}.
+    *
+    * @param context the connector and provider to remove for
+    */
    void delete(ConnectorCredentialsContext context);
 
 }
