@@ -184,6 +184,18 @@ class BluemindAuthClientTest {
       assertTrue(refusal.getMessage().contains("500"), refusal.getMessage());
    }
 
+   /**
+    * A refusal of the request's own authentication is told apart from any other
+    * failure: it is the one the session cache retries once with a fresh technical
+    * session (EXO-89647).
+    */
+   @Test
+   void tellsAnAuthenticationRefusalApart() throws Exception {
+      givenAnswer(401, "");
+
+      assertThrows(BluemindAuthenticationException.class, () -> client.sudo(API_URL, "sid-tech", "alice@acme.com"));
+   }
+
    /** An unreachable server is the connector's failure, not a mysterious one. */
    @Test
    void refusesWhenBlueMindCannotBeReached() throws Exception {

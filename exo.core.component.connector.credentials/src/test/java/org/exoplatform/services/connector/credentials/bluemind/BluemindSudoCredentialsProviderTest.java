@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.inOrder;
@@ -95,7 +96,7 @@ public class BluemindSudoCredentialsProviderTest {
       userHandler = mock(UserHandler.class);
       lenient().when(organizationService.getUserHandler()).thenReturn(userHandler);
       bluemind = mock(BluemindAuthClient.class);
-      provider = new BluemindSudoCredentialsProvider(service, configStorage, organizationService, bluemind);
+      provider = new BluemindSudoCredentialsProvider(service, configStorage, organizationService, new BluemindSessionStorage(bluemind, 600, 10000));
       provider.register();
    }
 
@@ -448,14 +449,51 @@ public class BluemindSudoCredentialsProviderTest {
    }
 
    /**
-    * The connectors call this after a 401, once, and it must be safe on a provider that
-    * caches nothing yet - doing nothing is the correct answer until EXO-89647 adds the
-    * cache, throwing would turn one refused request into a broken sync.
+    * Producing and invalidating derive the same key: an invalidation that missed the
+    * entry the production wrote would be a silent no-op, and the refused session would
+    * be served again until it expires.
     */
    @Test
-   void hasNothingToInvalidateYet() {
+   void invalidatesTheSessionItProduced() throws Exception {
+      BluemindSessionStorage sessions = mock(BluemindSessionStorage.class);
+      provider = new BluemindSudoCredentialsProvider(service, configStorage, organizationService, sessions);
+      givenTheTechnicalSecret();
+      givenConfiguredWith("email");
+      givenEmailOf(ALICE, "alice@example.com");
+      when(sessions.sudoSession(any(), any())).thenReturn(new BluemindSessionStorage.CachedSession("sid-alice", 0L));
+
+      provider.produce(context());
+      provider.invalidate(context());
+
+      org.mockito.ArgumentCaptor<BluemindSessionStorage.SudoKey> produced = org.mockito.ArgumentCaptor.forClass(BluemindSessionStorage.SudoKey.class);
+      verify(sessions).sudoSession(produced.capture(), eq("t0ps3cret"));
+      verify(sessions).evictSudoSession(produced.getValue());
+      assertEquals(new BluemindSessionStorage.SudoKey("https://bm.example.com", "admin0@global.virt", "alice@example.com"),
+                   produced.getValue());
+   }
+
+   /**
+    * The connectors call this after a 401, once: it must never throw, or one refused
+    * request would turn into a broken sync.
+    */
+   @Test
+   void invalidatingWithoutATargetIsHarmless() {
       ConnectorCredentialsContext context = context();
 
       assertDoesNotThrow(() -> provider.invalidate(context));
+   }
+
+   /** The material declares the moment its kept session leaves the cache. */
+   @Test
+   void declaresTheExpiryOfTheKeptSession() throws Exception {
+      givenTheTechnicalSecret();
+      givenConfiguredWith("email");
+      givenEmailOf(ALICE, "alice@example.com");
+      givenBluemindServes("alice@example.com", "sid-alice");
+
+      long before = System.currentTimeMillis();
+      Long expiresAt = provider.produce(context()).getExpiresAtEpochMillis();
+
+      assertTrue(expiresAt >= before + 600_000L && expiresAt <= System.currentTimeMillis() + 600_000L, String.valueOf(expiresAt));
    }
 }

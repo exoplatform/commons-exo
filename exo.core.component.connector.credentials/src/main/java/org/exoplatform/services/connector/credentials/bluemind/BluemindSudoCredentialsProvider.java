@@ -38,6 +38,8 @@ import org.exoplatform.services.connector.credentials.ConnectorCredentialsServic
 import org.exoplatform.services.connector.credentials.ConnectorProviderConfigStorage;
 import org.exoplatform.services.connector.credentials.HttpConnectorCredentials;
 import org.exoplatform.services.connector.credentials.MailConnectorCredentials;
+import org.exoplatform.services.connector.credentials.bluemind.BluemindSessionStorage.CachedSession;
+import org.exoplatform.services.connector.credentials.bluemind.BluemindSessionStorage.SudoKey;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.OrganizationService;
@@ -93,16 +95,16 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
 
    private final OrganizationService         organizationService;
 
-   private final BluemindAuthClient          bluemindAuthClient;
+   private final BluemindSessionStorage      bluemindSessionStorage;
 
    public BluemindSudoCredentialsProvider(ConnectorCredentialsService connectorCredentialsService,
                                           ConnectorProviderConfigStorage configStorage,
                                           OrganizationService organizationService,
-                                          BluemindAuthClient bluemindAuthClient) {
+                                          BluemindSessionStorage bluemindSessionStorage) {
       this.connectorCredentialsService = connectorCredentialsService;
       this.configStorage = configStorage;
       this.organizationService = organizationService;
-      this.bluemindAuthClient = bluemindAuthClient;
+      this.bluemindSessionStorage = bluemindSessionStorage;
    }
 
    @PostConstruct
@@ -261,14 +263,24 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
              + ": no target account could be derived from the configured field");
       }
       Map<String, String> configuration = configStorage.readDecrypted(context);
-      String apiUrl = configuration.get(API_URL);
-      // Two calls, and the second one spends the session rather than the password: the
-      // technical secret is read once, handed to login(), and never travels again.
-      BluemindSession technical = bluemindAuthClient.login(apiUrl,
-                                                          configuration.get(TECHNICAL_LOGIN),
-                                                          configuration.get(TECHNICAL_SECRET));
-      BluemindSession impersonated = bluemindAuthClient.sudo(apiUrl, technical.authKey(), target);
-      return material(context.getChannel(), target, impersonated.authKey());
+      // Two calls on a miss - the technical login, then the sudo, which spends the
+      // session rather than the password - and none on a hit: both sessions are kept
+      // (EXO-89647). The technical secret is handed to the load and never keyed on.
+      CachedSession session = bluemindSessionStorage.sudoSession(sudoKey(configuration, target),
+                                                                 configuration.get(TECHNICAL_SECRET));
+      return material(context.getChannel(), target, session.sessionId(), bluemindSessionStorage.expiresAtMillis(session));
+   }
+
+   /**
+    * The key of a target session, from the connector's configuration: the same
+    * derivation for producing and for invalidating, or an eviction would miss.
+    *
+    * @param configuration the connector's decrypted configuration
+    * @param target the account acted as
+    * @return the key
+    */
+   private SudoKey sudoKey(Map<String, String> configuration, String target) {
+      return new SudoKey(configuration.get(API_URL), configuration.get(TECHNICAL_LOGIN), target);
    }
 
    /**
@@ -279,19 +291,22 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
     * the technical login with a 401, and answered 207 under the target's, naming the
     * target in its {@code current-user-principal}.
     * <p>
-    * No expiry is declared: how long a BlueMind session lives is not measured yet, and
-    * announcing a wrong one would have callers throw away material that still works, or
-    * keep material that no longer does. EXO-89647 measures it and fills this in.
+    * The declared expiry is the moment the kept session leaves the cache: a caller
+    * never holds material the cache has already let go of.
     *
     * @param channel the channel the material is produced for
     * @param target the account the session belongs to
     * @param sessionId the session id BlueMind handed back
+    * @param expiresAtMillis when the material should be considered stale
     * @return the material for that channel
     */
-   private ConnectorCredentials material(ConnectorCredentialsChannel channel, String target, String sessionId) {
+   private ConnectorCredentials material(ConnectorCredentialsChannel channel,
+                                         String target,
+                                         String sessionId,
+                                         long expiresAtMillis) {
       if (channel == ConnectorCredentialsChannel.HTTP) {
          String token = Base64.getEncoder().encodeToString((target + ":" + sessionId).getBytes(StandardCharsets.UTF_8));
-         return new HttpConnectorCredentials("Basic " + token, null);
+         return new HttpConnectorCredentials("Basic " + token, expiresAtMillis);
       }
       Authenticator authenticator = new Authenticator() {
          @Override
@@ -299,11 +314,24 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
             return new PasswordAuthentication(target, sessionId);
          }
       };
-      return new MailConnectorCredentials(channel, authenticator, null);
+      return new MailConnectorCredentials(channel, authenticator, expiresAtMillis);
    }
 
+   /**
+    * Drops the target session kept for this user, so the next production opens a new
+    * one - what a caller does once when BlueMind refuses material that was produced
+    * from the cache (EXO-89649). Never throws: an invalidation that cannot derive its
+    * key has nothing to drop, and the entry expires anyway.
+    */
    @Override
    public void invalidate(ConnectorCredentialsContext context) {
-      // nothing to invalidate until EXO-89647 adds the cache
+      try {
+         String target = resolveTargetIdentity(context);
+         if (StringUtils.isNotBlank(target)) {
+            bluemindSessionStorage.evictSudoSession(sudoKey(configStorage.readDecrypted(context), target));
+         }
+      } catch (Exception e) {
+         LOG.debug("Nothing invalidated for user {}: the session key could not be derived", context.getUsername(), e);
+      }
    }
 }
