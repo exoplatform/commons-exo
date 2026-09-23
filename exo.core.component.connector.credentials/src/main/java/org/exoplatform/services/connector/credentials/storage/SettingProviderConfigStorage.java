@@ -98,7 +98,15 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
 
    /**
     * The secret fields whose stored value is being kept: typed SECRET, left blank by
-    * the caller, and already holding something.
+    * the caller, and already holding something - and only while every TEXT value is the
+    * one already stored.
+    * <p>
+    * A stored secret belongs to the free-text values it was typed with. An update that
+    * changes one (the API URL, the technical login) keeps no secret: kept, the next
+    * produce() would send it to whatever host the new URL names, a mistyped one
+    * included, or present it for another account. The administrator types the secret
+    * again, and a blank one is then simply missing. A CHOICE field does not count: it
+    * picks among the provider's own options and can name no host and no account.
     *
     * @param context the connector the configuration belongs to
     * @param fields the provider's descriptors
@@ -108,12 +116,30 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
    private Set<String> retainedFields(ConnectorCredentialsContext context,
                                       List<ConnectorCredentialsConfigField> fields,
                                       Map<String, String> values) {
+      boolean textChanged = fields.stream()
+                                       .filter(field -> field.getType() == ConnectorCredentialsConfigFieldType.TEXT)
+                                       .anyMatch(field -> !StringUtils.equals(postedAsStored(values.get(field.getKey())),
+                                                                              storedValue(context, field.getKey())));
+      if (textChanged) {
+         return Set.of();
+      }
       return fields.stream()
                    .filter(this::isSecret)
                    .filter(field -> StringUtils.isBlank(values.get(field.getKey())))
                    .filter(field -> storedValue(context, field.getKey()) != null)
                    .map(ConnectorCredentialsConfigField::getKey)
                    .collect(Collectors.toSet());
+   }
+
+   /**
+    * A posted value as store() would leave it: a blank one removes the entry, anything
+    * else is written as given.
+    *
+    * @param value the posted value
+    * @return what the storage would hold for it, null for nothing
+    */
+   private static String postedAsStored(String value) {
+      return StringUtils.isBlank(value) ? null : value;
    }
 
    /**
