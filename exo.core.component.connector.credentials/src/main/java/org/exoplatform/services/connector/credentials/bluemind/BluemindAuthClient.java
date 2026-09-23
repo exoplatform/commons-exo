@@ -23,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -52,12 +53,34 @@ public class BluemindAuthClient {
 
    private static final String OK     = "Ok";
 
+   /**
+    * How long a connection may take to open, and a request to answer. Without both, a
+    * BlueMind that accepts the connection and never answers would hold the calling
+    * thread for good: produce() runs these calls on every connection a connector makes,
+    * sync jobs included. The values are the caldav-integration BlueMind client's
+    * ({@code BlueMindRestSession}): 10 s to connect, 30 s for an answer. An
+    * {@code HttpTimeoutException} is an {@code IOException}, so it surfaces as the
+    * usual "cannot reach BlueMind".
+    */
+   static final Duration       CONNECT_TIMEOUT = Duration.ofSeconds(10);
+
+   static final Duration       REQUEST_TIMEOUT = Duration.ofSeconds(30);
+
    private final HttpClient    httpClient;
 
    private final ObjectMapper  mapper = new ObjectMapper();
 
    public BluemindAuthClient() {
-      this(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build());
+      this(defaultTransport());
+   }
+
+   /**
+    * The transport Spring's instance uses: no redirects, a bounded connect.
+    *
+    * @return the client
+    */
+   static HttpClient defaultTransport() {
+      return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(CONNECT_TIMEOUT).build();
    }
 
    BluemindAuthClient(HttpClient httpClient) {
@@ -80,6 +103,7 @@ public class BluemindAuthClient {
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(base(apiUrl) + "/api/auth/login?login=" + escape(login) + "&origin="
                                            + ORIGIN))
+                                       .timeout(REQUEST_TIMEOUT)
                                        .header("Content-Type", "application/json")
                                        .header("Accept", "application/json")
                                        // The body is the password itself, as a JSON string - not an object
@@ -114,6 +138,7 @@ public class BluemindAuthClient {
       required(targetLogin, "the account to act as");
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(base(apiUrl) + "/api/auth/_su?login=" + escape(targetLogin)))
+                                       .timeout(REQUEST_TIMEOUT)
                                        .header("X-BM-ApiKey", apiKey)
                                        .header("Accept", "application/json")
                                        .POST(HttpRequest.BodyPublishers.noBody())
