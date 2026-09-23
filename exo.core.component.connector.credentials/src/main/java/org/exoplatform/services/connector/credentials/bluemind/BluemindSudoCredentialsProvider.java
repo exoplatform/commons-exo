@@ -297,13 +297,13 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
     * @param channel the channel the material is produced for
     * @param target the account the session belongs to
     * @param sessionId the session id BlueMind handed back
-    * @param expiresAtMillis when the material should be considered stale
+    * @param expiresAtMillis when the material should be considered stale, null when unknown
     * @return the material for that channel
     */
    private ConnectorCredentials material(ConnectorCredentialsChannel channel,
                                          String target,
                                          String sessionId,
-                                         long expiresAtMillis) {
+                                         Long expiresAtMillis) {
       if (channel == ConnectorCredentialsChannel.HTTP) {
          String token = Base64.getEncoder().encodeToString((target + ":" + sessionId).getBytes(StandardCharsets.UTF_8));
          return new HttpConnectorCredentials("Basic " + token, expiresAtMillis);
@@ -322,13 +322,21 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
     * one - what a caller does once when BlueMind refuses material that was produced
     * from the cache (EXO-89649). Never throws: an invalidation that cannot derive its
     * key has nothing to drop, and the entry expires anyway.
+    * <p>
+    * The eviction is unconditional - the contract does not say which material was
+    * refused - so when BlueMind drops the sessions of an active user (a restart, an
+    * idle timeout), each of that user's consumers refused at that moment invalidates
+    * and opens a session of its own: at most one sudo per concurrent consumer, once per
+    * such event, never a loop. Accepted (Architect, 2026-09-23) rather than widening
+    * the contract to carry the refused material.
     */
    @Override
    public void invalidate(ConnectorCredentialsContext context) {
       try {
          String target = resolveTargetIdentity(context);
          if (StringUtils.isNotBlank(target)) {
-            bluemindSessionStorage.evictSudoSession(sudoKey(configStorage.readDecrypted(context), target));
+            // The key reads the two non-secret fields only: no need to decrypt the secret.
+            bluemindSessionStorage.evictSudoSession(sudoKey(configStorage.readWithoutSecrets(context), target));
          }
       } catch (Exception e) {
          LOG.debug("Nothing invalidated for user {}: the session key could not be derived", context.getUsername(), e);
