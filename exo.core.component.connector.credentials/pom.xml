@@ -93,6 +93,14 @@
          <artifactId>exo.core.component.organization.api</artifactId>
          <scope>provided</scope>
       </dependency>
+      <!-- Jackson 2, which BluemindAuthClient and SettingManagedConnectorStorage call
+           directly: declared because we call it, reached transitively through
+           portal.component.api otherwise. Provided, and version-managed by the BOM. -->
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-databind</artifactId>
+         <scope>provided</scope>
+      </dependency>
       <dependency>
          <groupId>io.meeds.kernel</groupId>
          <artifactId>exo.kernel.commons.test</artifactId>
