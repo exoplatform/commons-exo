@@ -29,8 +29,19 @@ package org.exoplatform.services.connector.credentials.bluemind;
  * diagnosis and <b>never compared</b> to the requested login: the comparison would reject
  * perfectly good sessions.
  *
+ * <p>
+ * {@link #toString()} names the account and never the {@code authKey}: the key opens
+ * every mailbox the technical account can impersonate, and a record's generated
+ * {@code toString} would put it in any log line or exception message the session
+ * reaches.
+ *
  * @param authKey the session token
  * @param latd the account the session belongs to, in BlueMind's own spelling
  */
 public record BluemindSession(String authKey, String latd) {
+
+  @Override
+  public String toString() {
+    return "BluemindSession[latd=" + latd + "]";
+  }
 }
