@@ -326,7 +326,7 @@ class BluemindSessionStorageTest {
    }
 
    /**
-    * Round 1: the repair of a stale technical session drops that session only. Here
+    * The repair of a stale technical session drops that session only. Here
     * another thread already replaced it while this call's sudo was being refused: the
     * replacement survives, and no third login is spent.
     */
@@ -349,7 +349,7 @@ class BluemindSessionStorageTest {
       verify(bluemind, times(2)).login(API, TECH, SECRET);
    }
 
-   /** Round 1: a loader failing with an Error releases every waiter instead of leaving them blocked. */
+   /** A loader failing with an Error releases every waiter instead of leaving them blocked. */
    @Test
    void anErrorInTheLoaderReleasesEveryWaiter() throws Exception {
       when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenAnswer(invocation -> {
@@ -362,7 +362,7 @@ class BluemindSessionStorageTest {
    }
 
    /**
-    * Round 1: a full store makes room by dropping its expired entries - without it, a
+    * A full store makes room by dropping its expired entries - without it, a
     * store that has once been full would keep nothing any more.
     */
    @Test
@@ -377,7 +377,7 @@ class BluemindSessionStorageTest {
       verify(bluemind, times(1)).sudo(org.mockito.ArgumentMatchers.eq(API), anyString(), org.mockito.ArgumentMatchers.eq("bob@example.com"));
    }
 
-   /** Round 1: a store that keeps nothing declares no expiry for what it produced. */
+   /** A store that keeps nothing declares no expiry for what it produced. */
    @Test
    void aZeroLifetimeDeclaresNoExpiry() throws Exception {
       storage = new BluemindSessionStorage(bluemind, 0, 10000, now::get);
