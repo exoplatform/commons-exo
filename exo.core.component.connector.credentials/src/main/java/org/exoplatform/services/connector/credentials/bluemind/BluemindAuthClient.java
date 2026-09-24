@@ -22,8 +22,13 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -58,7 +63,10 @@ import org.exoplatform.services.connector.credentials.ConnectorCredentialsExcept
  * {@code exo.connector.credentials.bluemind.requestTimeoutSeconds} (default
  * {@value #DEFAULT_REQUEST_TIMEOUT_SECONDS}). The session store makes every miss on a
  * key wait for the one call in flight, so a BlueMind that never answers must fail
- * that call rather than park all its waiters.
+ * that call rather than park all its waiters. The request timeout alone would not do
+ * it: the JDK stops its timer once the response headers arrive, so a server or proxy
+ * that sends the headers and then stalls on the body would block forever. The whole
+ * exchange, body included, is therefore bounded by the request timeout.
  */
 @Component
 public class BluemindAuthClient {
@@ -211,7 +219,7 @@ public class BluemindAuthClient {
     */
    private String send(HttpRequest request) throws ConnectorCredentialsException {
       try {
-         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+         HttpResponse<String> response = exchange(request);
          if (response.statusCode() == 401) {
             throw new BluemindAuthenticationException("BlueMind answered HTTP " + response.statusCode() + " on "
                 + request.uri().getPath());
@@ -221,11 +229,40 @@ public class BluemindAuthClient {
                 + request.uri().getPath());
          }
          return response.body();
+      } catch (HttpTimeoutException e) {
+         throw new ConnectorCredentialsException("BlueMind did not answer in time on " + request.uri().getPath(), e);
       } catch (IOException e) {
          throw new ConnectorCredentialsException("Cannot reach BlueMind on " + request.uri().getPath(), e);
       } catch (InterruptedException e) {
          Thread.currentThread().interrupt();
          throw new ConnectorCredentialsException("Interrupted while calling BlueMind on " + request.uri().getPath(), e);
+      }
+   }
+
+   /**
+    * The response, body included, within the request timeout; past it the exchange is
+    * cancelled and fails as a timeout.
+    *
+    * @param request the request to send
+    * @return the response with its body read
+    * @throws IOException when the transport fails or BlueMind does not answer in time
+    * @throws InterruptedException when the caller is interrupted while waiting
+    */
+   private HttpResponse<String> exchange(HttpRequest request) throws IOException, InterruptedException {
+      CompletableFuture<HttpResponse<String>> call = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+      try {
+         return call.get(requestTimeout.toMillis(), TimeUnit.MILLISECONDS);
+      } catch (TimeoutException e) {
+         call.cancel(true);
+         throw new HttpTimeoutException("no complete answer within " + requestTimeout.toSeconds() + " s");
+      } catch (InterruptedException e) {
+         call.cancel(true);
+         throw e;
+      } catch (ExecutionException e) {
+         if (e.getCause() instanceof IOException transportFailure) {
+            throw transportFailure;
+         }
+         throw new IOException(e.getCause());
       }
    }
 
