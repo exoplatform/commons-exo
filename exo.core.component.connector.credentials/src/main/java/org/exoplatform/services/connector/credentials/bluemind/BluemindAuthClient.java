@@ -82,6 +82,14 @@ public class BluemindAuthClient {
    /** Default per-request timeout, in seconds. */
    static final int            DEFAULT_REQUEST_TIMEOUT_SECONDS = 30;
 
+   /** The connect timeout property, with its default. */
+   private static final String CONNECT_TIMEOUT = "${exo.connector.credentials.bluemind.connectTimeoutSeconds:"
+       + DEFAULT_CONNECT_TIMEOUT_SECONDS + "}";
+
+   /** The per-request timeout property, with its default. */
+   private static final String REQUEST_TIMEOUT = "${exo.connector.credentials.bluemind.requestTimeoutSeconds:"
+       + DEFAULT_REQUEST_TIMEOUT_SECONDS + "}";
+
    private final HttpClient    httpClient;
 
    /** How long one call may wait for BlueMind's answer. */
@@ -90,12 +98,8 @@ public class BluemindAuthClient {
    private final ObjectMapper  mapper = new ObjectMapper();
 
    @Autowired
-   public BluemindAuthClient(@Value("${exo.connector.credentials.bluemind.connectTimeoutSeconds:"
-       + DEFAULT_CONNECT_TIMEOUT_SECONDS + "}")
-   int connectTimeoutSeconds,
-                             @Value("${exo.connector.credentials.bluemind.requestTimeoutSeconds:"
-                                 + DEFAULT_REQUEST_TIMEOUT_SECONDS + "}")
-                             int requestTimeoutSeconds) {
+   public BluemindAuthClient(@Value(CONNECT_TIMEOUT) int connectTimeoutSeconds,
+                             @Value(REQUEST_TIMEOUT) int requestTimeoutSeconds) {
       this(httpClient(connectTimeoutSeconds), requestTimeoutSeconds);
    }
 
