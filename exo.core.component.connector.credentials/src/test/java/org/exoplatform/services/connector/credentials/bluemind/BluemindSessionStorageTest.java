@@ -38,8 +38,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -136,6 +138,55 @@ class BluemindSessionStorageTest {
       verify(bluemind, times(1)).login(API, TECH, SECRET);
    }
 
+   /**
+    * A waiter interrupted while the load is in flight gives up alone: it restores its
+    * interrupt flag and fails, while the load completes and keeps its session for the
+    * next call.
+    */
+   @Test
+   void anInterruptedWaiterGivesUpAloneAndTheLoadCompletes() throws Exception {
+      CountDownLatch loading = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenAnswer(invocation -> {
+         loading.countDown();
+         release.await(5, TimeUnit.SECONDS);
+         return new BluemindSession("sid-alice", "latd");
+      });
+      ExecutorService pool = Executors.newSingleThreadExecutor();
+      try {
+         Future<CachedSession> loader = pool.submit(() -> storage.sudoSession(ALICE, SECRET));
+         assertTrue(loading.await(5, TimeUnit.SECONDS));
+         AtomicReference<Throwable> failure = new AtomicReference<>();
+         AtomicBoolean interrupted = new AtomicBoolean();
+         Thread waiter = new Thread(() -> {
+            try {
+               storage.sudoSession(ALICE, SECRET);
+            } catch (Throwable t) { // NOSONAR - the test records whatever the waiter got
+               failure.set(t);
+               interrupted.set(Thread.currentThread().isInterrupted());
+            }
+         });
+         waiter.start();
+         long deadline = System.currentTimeMillis() + 5_000L;
+         while (waiter.getState() != Thread.State.WAITING && System.currentTimeMillis() < deadline) {
+            Thread.sleep(5);
+         }
+         waiter.interrupt();
+         waiter.join(5_000L);
+
+         assertTrue(failure.get() instanceof ConnectorCredentialsException, String.valueOf(failure.get()));
+         assertTrue(failure.get().getMessage().contains("Interrupted"), failure.get().getMessage());
+         assertTrue(interrupted.get());
+         release.countDown();
+         assertEquals("sid-alice", loader.get(5, TimeUnit.SECONDS).sessionId());
+         assertEquals("sid-alice", storage.sudoSession(ALICE, SECRET).sessionId());
+         verify(bluemind, times(1)).sudo(API, "sid-tech", "alice@example.com");
+      } finally {
+         release.countDown();
+         pool.shutdownNow();
+      }
+   }
+
    /** Every thread waiting on a load that fails gets the loader's own exception. */
    @Test
    void everyWaiterGetsTheRefusal() throws Exception {
@@ -223,7 +274,7 @@ class BluemindSessionStorageTest {
     */
    @Test
    void anAuthenticationRefusalWithAFreshTechnicalSessionIsNotRetried() throws Exception {
-      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenThrow(new BluemindAuthenticationException("BlueMind answered HTTP 403 on /api/auth/_su"));
+      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenThrow(new BluemindAuthenticationException("BlueMind answered HTTP 401 on /api/auth/_su"));
 
       assertThrows(BluemindAuthenticationException.class, () -> storage.sudoSession(ALICE, SECRET));
 

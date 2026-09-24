@@ -327,8 +327,8 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
     * refused - so when BlueMind drops the sessions of an active user (a restart, an
     * idle timeout), each of that user's consumers refused at that moment invalidates
     * and opens a session of its own: at most one sudo per concurrent consumer, once per
-    * such event, never a loop. Accepted (Architect, 2026-09-23) rather than widening
-    * the contract to carry the refused material.
+    * such event, never a loop. Accepted rather than widening the contract to carry
+    * the refused material.
     */
    @Override
    public void invalidate(ConnectorCredentialsContext context) {

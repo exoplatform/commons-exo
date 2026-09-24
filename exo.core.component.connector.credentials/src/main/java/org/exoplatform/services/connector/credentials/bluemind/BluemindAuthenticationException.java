@@ -19,7 +19,7 @@ package org.exoplatform.services.connector.credentials.bluemind;
 import org.exoplatform.services.connector.credentials.ConnectorCredentialsException;
 
 /**
- * BlueMind refused the request's own authentication - HTTP 401 or 403 - as opposed
+ * BlueMind refused the request's own authentication - HTTP 401 - as opposed
  * to answering it: a session it no longer accepts, or a technical password it
  * rejects. Kept apart from a refusal BlueMind states in its answer ("status: Bad" for
  * an account it does not know) because only this one is worth retrying with a fresh
