@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -33,6 +34,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.Flow;
 
 import org.exoplatform.services.connector.credentials.ConnectorCredentialsException;
@@ -63,7 +66,7 @@ class BluemindAuthClientTest {
    @BeforeEach
    void setUp() {
       transport = mock(HttpClient.class);
-      client = new BluemindAuthClient(transport);
+      client = new BluemindAuthClient(transport, BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS);
    }
 
    /**
@@ -114,6 +117,26 @@ class BluemindAuthClientTest {
       assertEquals("https://bm.example.com/api/auth/_su?login=alice%40acme.com", sent.uri().toString());
       assertEquals("sid-tech", sent.headers().firstValue("X-BM-ApiKey").orElse(null));
       assertEquals(0L, sent.bodyPublisher().orElseThrow().contentLength());
+   }
+
+   /**
+    * Both calls give up after the request timeout, and the transport after the connect
+    * timeout: the session store parks every waiter of a key behind one call, so a
+    * BlueMind that never answers must fail that call.
+    */
+   @Test
+   void boundsEveryCallInTime() throws Exception {
+      client = new BluemindAuthClient(transport, 7);
+      givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-1\"}");
+
+      client.login(API_URL, "exo.service@acme.com", "s3cr3t");
+      client.sudo(API_URL, "sid-tech", "alice@acme.com");
+
+      ArgumentCaptor<HttpRequest> sent = ArgumentCaptor.forClass(HttpRequest.class);
+      verify(transport, times(2)).send(sent.capture(), any());
+      sent.getAllValues().forEach(request -> assertEquals(Optional.of(Duration.ofSeconds(7)), request.timeout()));
+      assertEquals(Optional.of(Duration.ofSeconds(5)), BluemindAuthClient.httpClient(5).connectTimeout());
+      assertEquals(Optional.of(Duration.ofSeconds(1)), BluemindAuthClient.httpClient(0).connectTimeout());
    }
 
    /**
@@ -194,6 +217,21 @@ class BluemindAuthClientTest {
       givenAnswer(401, "");
 
       assertThrows(BluemindAuthenticationException.class, () -> client.sudo(API_URL, "sid-tech", "alice@acme.com"));
+   }
+
+   /**
+    * A 403 is not a refused session: a proxy in front of BlueMind answers it, so it
+    * must not make the session store drop a technical session every user shares.
+    */
+   @Test
+   void aForbiddenStatusIsNotAnAuthenticationRefusal() throws Exception {
+      givenAnswer(403, "<html>Welcome to LTM</html>");
+
+      ConnectorCredentialsException refusal = assertThrows(ConnectorCredentialsException.class,
+                                                            () -> client.sudo(API_URL, "sid-tech", "alice@acme.com"));
+
+      assertFalse(refusal instanceof BluemindAuthenticationException);
+      assertTrue(refusal.getMessage().contains("403"), refusal.getMessage());
    }
 
    /** An unreachable server is the connector's failure, not a mysterious one. */

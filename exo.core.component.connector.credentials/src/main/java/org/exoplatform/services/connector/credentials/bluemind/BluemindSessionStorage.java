@@ -130,7 +130,7 @@ public class BluemindSessionStorage {
     * The session opened as the target account, through the technical session.
     * <p>
     * A kept technical session may have expired on BlueMind's side while still kept:
-    * when BlueMind refuses the sudo's own authentication (HTTP 401/403) with a
+    * when BlueMind refuses the sudo's own authentication (HTTP 401) with a
     * technical session this call did not open, that session is dropped and the sudo
     * tried once more with a fresh login. Any other failure - an account BlueMind does
     * not know ("status: Bad"), a BlueMind that is down - is the answer and propagates
