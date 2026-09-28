@@ -19,21 +19,30 @@ package org.exoplatform.services.connector.credentials.bluemind;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
 import org.exoplatform.services.connector.credentials.ConnectorCredentialsException;
@@ -64,7 +73,7 @@ class BluemindAuthClientTest {
    @BeforeEach
    void setUp() {
       transport = mock(HttpClient.class);
-      client = new BluemindAuthClient(transport);
+      client = new BluemindAuthClient(transport, BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS);
    }
 
    /**
@@ -115,6 +124,26 @@ class BluemindAuthClientTest {
       assertEquals("https://bm.example.com/api/auth/_su?login=alice%40acme.com", sent.uri().toString());
       assertEquals("sid-tech", sent.headers().firstValue("X-BM-ApiKey").orElse(null));
       assertEquals(0L, sent.bodyPublisher().orElseThrow().contentLength());
+   }
+
+   /**
+    * Both calls give up after the request timeout, and the transport after the connect
+    * timeout: the session store parks every waiter of a key behind one call, so a
+    * BlueMind that never answers must fail that call.
+    */
+   @Test
+   void boundsEveryCallInTime() throws Exception {
+      client = new BluemindAuthClient(transport, 7);
+      givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-1\"}");
+
+      client.login(API_URL, "exo.service@acme.com", "s3cr3t");
+      client.sudo(API_URL, "sid-tech", "alice@acme.com");
+
+      ArgumentCaptor<HttpRequest> sent = ArgumentCaptor.forClass(HttpRequest.class);
+      verify(transport, times(2)).sendAsync(sent.capture(), any());
+      sent.getAllValues().forEach(request -> assertEquals(Optional.of(Duration.ofSeconds(7)), request.timeout()));
+      assertEquals(Optional.of(Duration.ofSeconds(5)), BluemindAuthClient.httpClient(5).connectTimeout());
+      assertEquals(Optional.of(Duration.ofSeconds(1)), BluemindAuthClient.httpClient(0).connectTimeout());
    }
 
    /**
@@ -185,12 +214,99 @@ class BluemindAuthClientTest {
       assertTrue(refusal.getMessage().contains("500"), refusal.getMessage());
    }
 
+   /**
+    * A refusal of the request's own authentication is told apart from any other
+    * failure: it is the one the session cache retries once with a fresh technical
+    * session (EXO-89647).
+    */
+   @Test
+   void tellsAnAuthenticationRefusalApart() throws Exception {
+      givenAnswer(401, "");
+
+      assertThrows(BluemindAuthenticationException.class, () -> client.sudo(API_URL, "sid-tech", "alice@acme.com"));
+   }
+
+   /**
+    * A 403 is not a refused session: a proxy in front of BlueMind answers it, so it
+    * must not make the session store drop a technical session every user shares.
+    */
+   @Test
+   void aForbiddenStatusIsNotAnAuthenticationRefusal() throws Exception {
+      givenAnswer(403, "<html>Welcome to LTM</html>");
+
+      ConnectorCredentialsException refusal = assertThrows(ConnectorCredentialsException.class,
+                                                            () -> client.sudo(API_URL, "sid-tech", "alice@acme.com"));
+
+      assertFalse(refusal instanceof BluemindAuthenticationException);
+      assertTrue(refusal.getMessage().contains("403"), refusal.getMessage());
+   }
+
+   /**
+    * A transport that never completes fails the call within the request timeout and is
+    * cancelled: the session store's waiters are released with it.
+    */
+   @Test
+   void cancelsAnExchangeThatDoesNotCompleteInTime() throws Exception {
+      client = new BluemindAuthClient(transport, 1);
+      CompletableFuture<HttpResponse<String>> call = new CompletableFuture<>();
+      when(transport.<String> sendAsync(any(), any())).thenReturn(call);
+
+      ConnectorCredentialsException refusal =
+                                            assertTimeoutPreemptively(Duration.ofSeconds(10),
+                                                                      () -> assertThrows(ConnectorCredentialsException.class,
+                                                                                         () -> client.sudo(API_URL,
+                                                                                                           "sid-tech",
+                                                                                                           "alice@acme.com")));
+
+      assertTrue(refusal.getMessage().startsWith("BlueMind did not answer in time"), refusal.getMessage());
+      assertTrue(call.isCancelled());
+   }
+
+   /**
+    * Against a real socket, the case the request timeout alone leaves open: the server
+    * sends the status and headers, part of the body, then stalls. The JDK stops the
+    * request timer once the headers arrive; the call must still fail in time.
+    */
+   @Test
+   void failsInTimeWhenTheBodyStallsAfterTheHeaders() throws Exception {
+      try (ServerSocket server = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+         Thread stalling = new Thread(() -> {
+            try (Socket socket = server.accept()) {
+               socket.getInputStream().read(new byte[4096]);
+               OutputStream out = socket.getOutputStream();
+               out.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"st"
+                   .getBytes(StandardCharsets.US_ASCII));
+               out.flush();
+               Thread.sleep(30_000L);
+            } catch (Exception e) { // NOSONAR - the stalling server ends when the test closes its socket
+               // nothing to do
+            }
+         });
+         stalling.setDaemon(true);
+         stalling.start();
+         BluemindAuthClient real = new BluemindAuthClient(1, 1);
+
+         ConnectorCredentialsException refusal =
+                                               assertTimeoutPreemptively(Duration.ofSeconds(10),
+                                                                         () -> assertThrows(ConnectorCredentialsException.class,
+                                                                                            () -> real.login("http://127.0.0.1:"
+                                                                                                + server.getLocalPort(),
+                                                                                                             "exo.service@acme.com",
+                                                                                                             "s3cr3t")));
+
+         assertTrue(refusal.getMessage().startsWith("BlueMind did not answer in time"), refusal.getMessage());
+         stalling.interrupt();
+      }
+   }
+
    /** An unreachable server is the connector's failure, not a mysterious one. */
    @Test
    void refusesWhenBlueMindCannotBeReached() throws Exception {
-      when(transport.<String> send(any(), any())).thenThrow(new IOException("connection refused"));
+      when(transport.<String> sendAsync(any(), any())).thenReturn(CompletableFuture.failedFuture(new IOException("connection refused")));
 
-      assertThrows(ConnectorCredentialsException.class, () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
+      ConnectorCredentialsException refusal = assertThrows(ConnectorCredentialsException.class,
+                                                            () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
+      assertTrue(refusal.getMessage().startsWith("Cannot reach BlueMind"), refusal.getMessage());
    }
 
    /**
@@ -200,21 +316,27 @@ class BluemindAuthClientTest {
     */
    @Test
    void neitherCallWaitsForeverOnASilentServer() throws Exception {
-      assertEquals(BluemindAuthClient.CONNECT_TIMEOUT, BluemindAuthClient.defaultTransport().connectTimeout().orElse(null));
+      assertEquals(Duration.ofSeconds(BluemindAuthClient.DEFAULT_CONNECT_TIMEOUT_SECONDS),
+                   BluemindAuthClient.httpClient(BluemindAuthClient.DEFAULT_CONNECT_TIMEOUT_SECONDS).connectTimeout().orElse(null));
 
       givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-tech\"}");
       client.login(API_URL, "exo.service@acme.com", "s3cr3t");
-      assertEquals(BluemindAuthClient.REQUEST_TIMEOUT, captureRequest().timeout().orElse(null), "the login has a deadline");
+      assertEquals(Duration.ofSeconds(BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS),
+                   captureRequest().timeout().orElse(null),
+                   "the login has a deadline");
 
       transport = mock(HttpClient.class);
-      client = new BluemindAuthClient(transport);
+      client = new BluemindAuthClient(transport, BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS);
       givenAnswer(200, "{\"status\":\"Ok\",\"authKey\":\"sid-alice\"}");
       client.sudo(API_URL, "sid-tech", "alice@acme.com");
-      assertEquals(BluemindAuthClient.REQUEST_TIMEOUT, captureRequest().timeout().orElse(null), "the sudo has a deadline");
+      assertEquals(Duration.ofSeconds(BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS),
+                   captureRequest().timeout().orElse(null),
+                   "the sudo has a deadline");
 
       transport = mock(HttpClient.class);
-      client = new BluemindAuthClient(transport);
-      when(transport.<String> send(any(), any())).thenThrow(new HttpTimeoutException("request timed out"));
+      client = new BluemindAuthClient(transport, BluemindAuthClient.DEFAULT_REQUEST_TIMEOUT_SECONDS);
+      when(transport.<String> sendAsync(any(), any())).thenReturn(CompletableFuture.failedFuture(new HttpTimeoutException(
+          "request timed out")));
       assertThrows(ConnectorCredentialsException.class, () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
    }
 
@@ -232,10 +354,13 @@ class BluemindAuthClientTest {
     */
    @Test
    void restoresTheInterruptFlagBeforeFailing() throws Exception {
-      when(transport.<String> send(any(), any())).thenThrow(new InterruptedException("stop"));
+      CompletableFuture<HttpResponse<String>> call = new CompletableFuture<>();
+      when(transport.<String> sendAsync(any(), any())).thenReturn(call);
+      Thread.currentThread().interrupt();
 
       assertThrows(ConnectorCredentialsException.class, () -> client.login(API_URL, "exo.service@acme.com", "s3cr3t"));
       assertTrue(Thread.interrupted(), "the interrupt flag must survive the translation");
+      assertTrue(call.isCancelled(), "the exchange is cancelled with the caller");
    }
 
    /**
@@ -272,12 +397,12 @@ class BluemindAuthClientTest {
       when(response.statusCode()).thenReturn(status);
       // A non-2xx answer is refused before its body is read, so this one is lenient.
       lenient().when(response.body()).thenReturn(body);
-      when(transport.<String> send(any(), any())).thenReturn(response);
+      when(transport.<String> sendAsync(any(), any())).thenReturn(CompletableFuture.completedFuture(response));
    }
 
    private HttpRequest captureRequest() throws Exception {
       ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-      verify(transport).send(captor.capture(), any());
+      verify(transport).sendAsync(captor.capture(), any());
       return captor.getValue();
    }
 
