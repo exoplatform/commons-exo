@@ -22,11 +22,18 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.lang3.StringUtils;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,6 +51,22 @@ import org.exoplatform.services.connector.credentials.ConnectorCredentialsExcept
  * <b>An HTTP 200 is not a success.</b> BlueMind answers a refused login and a refused
  * sudo alike with 200 and a {@code status} of {@code Bad} in the body, so the status
  * code is only half the check and the body carries the other half.
+ * <p>
+ * <b>Only a 401 refuses the request's own authentication.</b> Observed on a live
+ * instance: a dead or logged-out session is refused with 401 and
+ * {@code AUTHENTICATION_FAIL}; a sudo the account has no right to, or to an unknown
+ * account, is 200 with {@code status: Bad}; a 403 came from the load balancer in
+ * front of BlueMind, not from BlueMind, so it says nothing about the session.
+ * <p>
+ * <b>Bounded in time</b>: {@code exo.connector.credentials.bluemind.connectTimeoutSeconds}
+ * (default {@value #DEFAULT_CONNECT_TIMEOUT_SECONDS}) and
+ * {@code exo.connector.credentials.bluemind.requestTimeoutSeconds} (default
+ * {@value #DEFAULT_REQUEST_TIMEOUT_SECONDS}). The session store makes every miss on a
+ * key wait for the one call in flight, so a BlueMind that never answers must fail
+ * that call rather than park all its waiters. The request timeout alone would not do
+ * it: the JDK stops its timer once the response headers arrive, so a server or proxy
+ * that sends the headers and then stalls on the body would block forever. The whole
+ * exchange, body included, is therefore bounded by the request timeout.
  */
 @Component
 public class BluemindAuthClient {
@@ -53,38 +76,60 @@ public class BluemindAuthClient {
 
    private static final String OK     = "Ok";
 
-   /**
-    * How long a connection may take to open, and a request to answer. Without both, a
-    * BlueMind that accepts the connection and never answers would hold the calling
-    * thread for good: produce() runs these calls on every connection a connector makes,
-    * sync jobs included. The values are the caldav-integration BlueMind client's
-    * ({@code BlueMindRestSession}): 10 s to connect, 30 s for an answer. An
-    * {@code HttpTimeoutException} is an {@code IOException}, so it surfaces as the
-    * usual "cannot reach BlueMind".
-    */
-   static final Duration       CONNECT_TIMEOUT = Duration.ofSeconds(10);
+   /** Default connect timeout, in seconds. */
+   static final int            DEFAULT_CONNECT_TIMEOUT_SECONDS = 10;
 
-   static final Duration       REQUEST_TIMEOUT = Duration.ofSeconds(30);
+   /** Default per-request timeout, in seconds. */
+   static final int            DEFAULT_REQUEST_TIMEOUT_SECONDS = 30;
+
+   /** The connect timeout property, with its default. */
+   private static final String CONNECT_TIMEOUT = "${exo.connector.credentials.bluemind.connectTimeoutSeconds:"
+       + DEFAULT_CONNECT_TIMEOUT_SECONDS + "}";
+
+   /** The per-request timeout property, with its default. */
+   private static final String REQUEST_TIMEOUT = "${exo.connector.credentials.bluemind.requestTimeoutSeconds:"
+       + DEFAULT_REQUEST_TIMEOUT_SECONDS + "}";
 
    private final HttpClient    httpClient;
 
+   /** How long one call may wait for BlueMind's answer. */
+   private final Duration      requestTimeout;
+
    private final ObjectMapper  mapper = new ObjectMapper();
 
-   public BluemindAuthClient() {
-      this(defaultTransport());
+   @Autowired
+   public BluemindAuthClient(@Value(CONNECT_TIMEOUT) int connectTimeoutSeconds,
+                             @Value(REQUEST_TIMEOUT) int requestTimeoutSeconds) {
+      this(httpClient(connectTimeoutSeconds), requestTimeoutSeconds);
+   }
+
+   BluemindAuthClient(HttpClient httpClient, int requestTimeoutSeconds) {
+      this.httpClient = httpClient;
+      this.requestTimeout = seconds(requestTimeoutSeconds);
    }
 
    /**
-    * The transport Spring's instance uses: no redirects, a bounded connect.
+    * The transport, which never follows a redirect and gives up connecting after the
+    * configured delay.
     *
+    * @param connectTimeoutSeconds the connect timeout, at least one second
     * @return the client
     */
-   static HttpClient defaultTransport() {
-      return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(CONNECT_TIMEOUT).build();
+   static HttpClient httpClient(int connectTimeoutSeconds) {
+      return HttpClient.newBuilder()
+                       .followRedirects(HttpClient.Redirect.NEVER)
+                       .connectTimeout(seconds(connectTimeoutSeconds))
+                       .build();
    }
 
-   BluemindAuthClient(HttpClient httpClient) {
-      this.httpClient = httpClient;
+   /**
+    * A timeout of at least one second: the JDK refuses a zero or negative one.
+    *
+    * @param value the configured number of seconds
+    * @return the timeout
+    */
+   private static Duration seconds(int value) {
+      return Duration.ofSeconds(Math.max(1, value));
    }
 
    /**
@@ -103,13 +148,13 @@ public class BluemindAuthClient {
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(base(apiUrl) + "/api/auth/login?login=" + escape(login) + "&origin="
                                            + ORIGIN))
-                                       .timeout(REQUEST_TIMEOUT)
                                        .header("Content-Type", "application/json")
                                        .header("Accept", "application/json")
                                        // The body is the password itself, as a JSON string - not an object
                                        // carrying it. Jackson writes it, so a quote or a backslash in the
                                        // password travels escaped rather than breaking the document.
                                        .POST(HttpRequest.BodyPublishers.ofString(asJsonString(password)))
+                                       .timeout(requestTimeout)
                                        .build();
       return session(send(request), "log " + login + " in");
    }
@@ -138,10 +183,10 @@ public class BluemindAuthClient {
       required(targetLogin, "the account to act as");
       HttpRequest request = HttpRequest.newBuilder()
                                        .uri(URI.create(base(apiUrl) + "/api/auth/_su?login=" + escape(targetLogin)))
-                                       .timeout(REQUEST_TIMEOUT)
                                        .header("X-BM-ApiKey", apiKey)
                                        .header("Accept", "application/json")
                                        .POST(HttpRequest.BodyPublishers.noBody())
+                                       .timeout(requestTimeout)
                                        .build();
       return session(send(request), "act as " + targetLogin);
    }
@@ -178,17 +223,50 @@ public class BluemindAuthClient {
     */
    private String send(HttpRequest request) throws ConnectorCredentialsException {
       try {
-         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+         HttpResponse<String> response = exchange(request);
+         if (response.statusCode() == 401) {
+            throw new BluemindAuthenticationException("BlueMind answered HTTP " + response.statusCode() + " on "
+                + request.uri().getPath());
+         }
          if (response.statusCode() / 100 != 2) {
             throw new ConnectorCredentialsException("BlueMind answered HTTP " + response.statusCode() + " on "
                 + request.uri().getPath());
          }
          return response.body();
+      } catch (HttpTimeoutException e) {
+         throw new ConnectorCredentialsException("BlueMind did not answer in time on " + request.uri().getPath(), e);
       } catch (IOException e) {
          throw new ConnectorCredentialsException("Cannot reach BlueMind on " + request.uri().getPath(), e);
       } catch (InterruptedException e) {
          Thread.currentThread().interrupt();
          throw new ConnectorCredentialsException("Interrupted while calling BlueMind on " + request.uri().getPath(), e);
+      }
+   }
+
+   /**
+    * The response, body included, within the request timeout; past it the exchange is
+    * cancelled and fails as a timeout.
+    *
+    * @param request the request to send
+    * @return the response with its body read
+    * @throws IOException when the transport fails or BlueMind does not answer in time
+    * @throws InterruptedException when the caller is interrupted while waiting
+    */
+   private HttpResponse<String> exchange(HttpRequest request) throws IOException, InterruptedException {
+      CompletableFuture<HttpResponse<String>> call = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+      try {
+         return call.get(requestTimeout.toMillis(), TimeUnit.MILLISECONDS);
+      } catch (TimeoutException e) {
+         call.cancel(true);
+         throw new HttpTimeoutException("no complete answer within " + requestTimeout.toSeconds() + " s");
+      } catch (InterruptedException e) {
+         call.cancel(true);
+         throw e;
+      } catch (ExecutionException e) {
+         if (e.getCause() instanceof IOException transportFailure) {
+            throw transportFailure;
+         }
+         throw new IOException(e.getCause());
       }
    }
 
