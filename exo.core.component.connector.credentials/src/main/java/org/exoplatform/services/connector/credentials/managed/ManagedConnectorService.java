@@ -221,7 +221,7 @@ public class ManagedConnectorService {
     * read from storage.
     * <p>
     * This is what an administration screen needs before it applies a change: which of
-    * the users managed mode attached would no longer be governed by it (EXO-89654), and
+    * the users managed mode attached would no longer be governed by it, and
     * so how many accounts the change disconnects. Computing it with the rule the login
     * applies keeps the announced count and the applied change the same.
     * <p>

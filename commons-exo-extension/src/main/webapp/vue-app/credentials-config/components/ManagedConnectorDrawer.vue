@@ -139,7 +139,7 @@
         </div>
       </div>
       <!--
-        The change disconnects accounts managed mode attached (EXO-89654): said,
+        The change disconnects accounts managed mode attached: said,
         with how many, in the platform's confirmation before anything is stored.
       -->
       <confirm-dialog
@@ -196,7 +196,7 @@ export default {
     },
     /**
      * Counts, before anything is stored, the accounts the choice would disconnect:
-     * (connectorId, excludedGroups) => Promise of a number (EXO-89654). Optional:
+     * (connectorId, excludedGroups) => Promise of a number. Optional:
      * without it the choice is stored at once.
      */
     preview: {
@@ -357,7 +357,7 @@ export default {
       }
     },
     /**
-     * Applies the choice: counted first when the add-on can count (EXO-89654), and
+     * Applies the choice: counted first when the add-on can count, and
      * stored at once when it disconnects nobody - otherwise the confirmation says how
      * many accounts it disconnects, and {@link store} waits for its OK.
      *

@@ -295,7 +295,7 @@ class ManagedConnectorServiceTest {
       assertNull(service.designatedConnectorFor("email", "alice"));
    }
 
-   // ------------------------------------------------ a state not saved yet (EXO-89654)
+   // ------------------------------------------------ a state not saved yet
 
    /**
     * A proposed state is judged by the rule the login applies, without reading the
@@ -341,10 +341,14 @@ class ManagedConnectorServiceTest {
       assertCode("managedConnector.user.required", () -> service.designatedConnectorFor(9L, List.of(), " "));
    }
 
-   /** Without exclusions no identity is asked, so an unresolvable one refuses nothing. */
+   /**
+    * Without exclusions - an empty list, or null for none - no identity is asked, so an
+    * unresolvable one refuses nothing.
+    */
    @Test
    void aProposedStateWithoutExclusionsNeedsNoIdentity() {
       assertEquals(9L, service.designatedConnectorFor(9L, List.of(), "alice"));
+      assertEquals(9L, service.designatedConnectorFor(9L, null, "alice"));
       verify(userAcl, never()).getUserIdentity(anyString());
    }
 
