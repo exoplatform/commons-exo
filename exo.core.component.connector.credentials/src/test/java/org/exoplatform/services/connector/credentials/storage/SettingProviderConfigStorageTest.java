@@ -503,14 +503,26 @@ public class SettingProviderConfigStorageTest {
     */
    @Test
    void readStoredSecretKeysAnswersForTheContextsProviderOnly() {
+      ConnectorCredentialsProvider otherProvider = mock(ConnectorCredentialsProvider.class);
+      when(otherProvider.getName()).thenReturn("other-sudo");
+      when(otherProvider.getSupportedChannels()).thenReturn(EnumSet.allOf(ConnectorCredentialsChannel.class));
+      when(otherProvider.getConfigurationFields())
+                                                  .thenReturn(List.of(new ConnectorCredentialsConfigField("technicalSecret",
+                                                                                                          ConnectorCredentialsConfigFieldType.SECRET,
+                                                                                                          "label.technicalSecret",
+                                                                                                          null,
+                                                                                                          true,
+                                                                                                          List.of())));
+      credentialsService.register(otherProvider);
       givenStored("technicalSecret", "ENC(s3cret)");
 
-      ConnectorCredentialsContext otherProvider = new ConnectorCredentialsContext(2L,
-                                                                                  "personal",
-                                                                                  null,
-                                                                                  ConnectorCredentialsChannel.HTTP,
-                                                                                  "email");
+      ConnectorCredentialsContext otherContext = new ConnectorCredentialsContext(2L,
+                                                                                 "other-sudo",
+                                                                                 null,
+                                                                                 ConnectorCredentialsChannel.HTTP,
+                                                                                 "email");
 
-      assertEquals(Set.of(), storage.readStoredSecretKeys(otherProvider));
+      assertEquals(Set.of(), storage.readStoredSecretKeys(otherContext));
+      assertEquals(Set.of("technicalSecret"), storage.readStoredSecretKeys(context()));
    }
 }

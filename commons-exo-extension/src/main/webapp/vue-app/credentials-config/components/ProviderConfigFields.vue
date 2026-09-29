@@ -240,13 +240,14 @@ export default {
     },
     /**
      * The field's validation rules, the same as valid() applies: a required SECRET
-     * left blank whose stored value is kept is not flagged "required".
+     * left blank whose stored value is kept is not flagged "required". Nor is one
+     * errorMessagesOf() already speaks for: a single message says why it is missing.
      *
      * @param {object} field the field descriptor
      * @returns {Array} the Vuetify rules
      */
     rulesOf(field) {
-      if (!field.required || this.keepsStoredSecret(field)) {
+      if (!field.required || this.keepsStoredSecret(field) || this.errorMessagesOf(field).length) {
         return [];
       }
       return [v => !!v || this.$t('credentialsProviderConfig.field.required')];
@@ -254,7 +255,9 @@ export default {
     /**
      * Says at once, on the secret itself, that it must be typed again because a TEXT
      * value changed. A rule would stay silent until the administrator touches that
-     * field, while the save button is already disabled for its sake.
+     * field, while the save button is already disabled for its sake. Required secrets
+     * only: an optional one is dropped by the server on the same change, and nothing
+     * here says so - no provider describes an optional secret today.
      *
      * @param {object} field the field descriptor
      * @returns {Array} the messages to show, empty when there is nothing to say
