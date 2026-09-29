@@ -46,6 +46,7 @@
         :placeholder="placeholderOf(field)"
         :hint="hintOf(field)"
         :rules="rulesOf(field)"
+        :error-messages="errorMessagesOf(field)"
         :name="idOf(field)"
         :type="typeOf(field)"
         :append-icon="appendIconOf(field)"
@@ -78,14 +79,25 @@ export default {
       default: () => ({}),
     },
     /**
-     * Whether this entity already has secrets stored. A required SECRET left empty is
-     * then valid and means "unchanged": the form never receives a stored secret, so it
-     * cannot post one back, and demanding it again on every edit would force the
-     * administrator to retype the password to rename a connector.
+     * The keys of the SECRET fields that have a value stored for the provider the
+     * values are edited for, as the entity's provider-config read answers them. A
+     * required SECRET among them may be left empty to mean "unchanged": the form never
+     * receives a stored secret, so it cannot post one back, and demanding it again on
+     * every edit would force the administrator to retype the password to rename a
+     * connector. The host empties it when another provider is selected, which has
+     * nothing stored yet.
      */
-    secretsStored: {
-      type: Boolean,
-      default: false,
+    storedSecretKeys: {
+      type: Array,
+      default: () => [],
+    },
+    /**
+     * The non-secret values stored for that provider, as the same read answers them:
+     * what a TEXT field is compared with to know whether a blank secret is still kept.
+     */
+    storedValues: {
+      type: Object,
+      default: () => ({}),
     },
   },
   data() {
@@ -103,6 +115,21 @@ export default {
       return this.value || {};
     },
     /**
+     * Whether a TEXT value differs from the stored one. The server keeps a blank
+     * secret only while none does (SettingProviderConfigStorage.retainedFields): a
+     * secret kept across a new address or login would be sent to another host or
+     * presented for another account. Compared the way the server compares, a blank
+     * value standing for no value and anything else compared as typed; a CHOICE does
+     * not count, it names no host and no account.
+     *
+     * @returns {boolean} true when a stored secret would no longer be kept
+     */
+    textChanged() {
+      return this.fields
+        .filter(field => field.type === 'TEXT')
+        .some(field => this.asStored(this.configuration[field.key]) !== this.asStored(this.storedValues?.[field.key]));
+    },
+    /**
      * Whether every required field the provider describes carries a value. Emitted
      * rather than exposed, so the host drawer can disable its save button without
      * knowing a single thing about which fields the provider asked for.
@@ -114,7 +141,7 @@ export default {
         if (!field.required) {
           return true;
         }
-        if (field.type === 'SECRET' && this.secretsStored) {
+        if (this.keepsStoredSecret(field)) {
           return true;
         }
         const fieldValue = this.configuration[field.key];
@@ -213,17 +240,54 @@ export default {
     },
     /**
      * The field's validation rules, the same as valid() applies: a required SECRET
-     * left blank on a connector whose secrets are stored keeps the stored one, so it
-     * is not flagged "required".
+     * left blank whose stored value is kept is not flagged "required".
      *
      * @param {object} field the field descriptor
      * @returns {Array} the Vuetify rules
      */
     rulesOf(field) {
-      if (!field.required || (field.type === 'SECRET' && this.secretsStored)) {
+      if (!field.required || this.keepsStoredSecret(field)) {
         return [];
       }
       return [v => !!v || this.$t('credentialsProviderConfig.field.required')];
+    },
+    /**
+     * Says at once, on the secret itself, that it must be typed again because a TEXT
+     * value changed. A rule would stay silent until the administrator touches that
+     * field, while the save button is already disabled for its sake.
+     *
+     * @param {object} field the field descriptor
+     * @returns {Array} the messages to show, empty when there is nothing to say
+     */
+    errorMessagesOf(field) {
+      if (field.type === 'SECRET'
+          && field.required
+          && this.storedSecretKeys.includes(field.key)
+          && this.textChanged
+          && !this.asStored(this.configuration[field.key])) {
+        return [this.$t('credentialsProviderConfig.field.secretAgain')];
+      }
+      return [];
+    },
+    /**
+     * Whether a SECRET left blank keeps the stored one: something is stored for it and
+     * no TEXT value changed. Only then is its emptiness "unchanged" rather than missing.
+     *
+     * @param {object} field the field descriptor
+     * @returns {boolean} true when a blank value would keep the stored secret
+     */
+    keepsStoredSecret(field) {
+      return field.type === 'SECRET' && this.storedSecretKeys.includes(field.key) && !this.textChanged;
+    },
+    /**
+     * A value as the storage would hold it: a blank one is no value at all.
+     *
+     * @param {string} fieldValue a value typed or stored
+     * @returns {string} the value, or null when blank
+     */
+    asStored(fieldValue) {
+      const text = fieldValue === null || typeof fieldValue === 'undefined' ? '' : String(fieldValue);
+      return text.trim() ? text : null;
     },
     reveal(key) {
       this.$set(this.revealed, key, !this.revealed[key]);
