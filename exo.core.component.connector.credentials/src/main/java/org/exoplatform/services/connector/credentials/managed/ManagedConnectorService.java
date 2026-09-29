@@ -212,13 +212,52 @@ public class ManagedConnectorService {
       if (designated == null) {
          return null;
       }
-      List<String> excluded = storage.readExclusions(kind);
+      return verdict(designated, storage.readExclusions(kind), username, true);
+   }
+
+   /**
+    * The same verdict as {@link #designatedConnectorFor(String, String)}, for a state
+    * the administrator has not saved yet: a designation and exclusions passed in, nothing
+    * read from storage.
+    * <p>
+    * This is what an administration screen needs before it applies a change: which of
+    * the users managed mode attached would no longer be governed by it, and
+    * so how many accounts the change disconnects. Computing it with the rule the login
+    * applies keeps the announced count and the applied change the same.
+    * <p>
+    * One difference, because this verdict decides a disconnection: a user the platform
+    * cannot identify is not counted as excluded but refused. The identity cache answers
+    * null when the directory fails, and deleting a user's connection on a directory
+    * failure cannot be undone; leaving them connected until the next change or login
+    * costs nothing.
+    *
+    * @param designation the connector designated in that state, null when managed mode
+    *          would be off
+    * @param excludedGroups the groups excluded in that state, null for none
+    * @param username the eXo login to resolve for
+    * @return the designated connector id, or null when nothing would apply to the user
+    * @throws IllegalArgumentException when the user is blank
+    * @throws IllegalStateException when exclusions apply and the user's identity cannot
+    *           be resolved
+    */
+   public Long designatedConnectorFor(Long designation, List<String> excludedGroups, String username) {
+      if (StringUtils.isBlank(username)) {
+         throw new IllegalArgumentException(USER_REQUIRED);
+      }
+      return verdict(designation, excludedGroups, username, false);
+   }
+
+   private Long verdict(Long designation, List<String> excludedGroups, String username, boolean unknownIsExcluded) {
+      if (designation == null) {
+         return null;
+      }
+      List<String> excluded = normalise(excludedGroups);
       // The identity is asked only when there is something to exclude from and
       // someone to exclude: this runs at every login, for every kind.
       if (excluded.isEmpty()) {
-         return designated;
+         return designation;
       }
-      return isMemberOfAny(username, excluded) ? null : designated;
+      return isMemberOfAny(username, excluded, unknownIsExcluded) ? null : designation;
    }
 
    /**
@@ -231,15 +270,23 @@ public class ManagedConnectorService {
     * consistent with what every other ACL decision sees. A user the platform cannot
     * identify counts as "excluded": attaching someone whose exclusion could not be
     * checked would override an administrator's decision, while leaving them for the
-    * next login costs one login.
+    * next login costs one login. A verdict that decides a disconnection refuses instead.
     *
     * @param username the eXo login
     * @param groupIds the excluded groups
-    * @return true when the user is in one of them, or when nobody can tell
+    * @param unknownIsExcluded whether a user nobody can identify counts as excluded, or
+    *          is refused
+    * @return true when the user is in one of them, or when nobody can tell and
+    *         {@code unknownIsExcluded}
+    * @throws IllegalStateException when nobody can tell and not {@code unknownIsExcluded}
     */
-   private boolean isMemberOfAny(String username, List<String> groupIds) {
+   private boolean isMemberOfAny(String username, List<String> groupIds, boolean unknownIsExcluded) {
       Identity identity = userAcl.getUserIdentity(username);
       if (identity == null) {
+         if (!unknownIsExcluded) {
+            throw new IllegalStateException("No identity for user " + username
+                + ": whether the managed-mode exclusions apply to them cannot be told");
+         }
          LOG.warn("No identity for user {} to apply the managed-mode exclusions; not attaching them", username);
          return true;
       }

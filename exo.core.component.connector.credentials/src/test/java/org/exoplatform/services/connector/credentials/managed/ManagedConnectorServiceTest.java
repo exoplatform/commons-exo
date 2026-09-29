@@ -295,6 +295,63 @@ class ManagedConnectorServiceTest {
       assertNull(service.designatedConnectorFor("email", "alice"));
    }
 
+   // ------------------------------------------------ a state not saved yet
+
+   /**
+    * A proposed state is judged by the rule the login applies, without reading the
+    * stored one: a stored designation elsewhere changes nothing to the answer.
+    */
+   @Test
+   void judgesAProposedStateWithoutReadingTheStoredOne() {
+      designations.put("email", 7L);
+      exclusions.put("email", List.of("/externals"));
+      givenGroupsOf("alice", "/platform/users", "/externals");
+
+      assertEquals(9L, service.designatedConnectorFor(9L, List.of("/developers"), "alice"));
+      assertNull(service.designatedConnectorFor(9L, List.of("/externals"), "alice"));
+      verify(storage, never()).readDesignation(anyString());
+      verify(storage, never()).readExclusions(anyString());
+   }
+
+   /** Managed mode off in the proposed state: nothing applies to anybody. */
+   @Test
+   void aProposedStateWithNoDesignationAppliesToNobody() {
+      assertNull(service.designatedConnectorFor(null, List.of(), "alice"));
+      verify(userAcl, never()).getUserIdentity(anyString());
+   }
+
+   /** The proposed exclusions are compared as they would be stored: trimmed, blanks dropped. */
+   @Test
+   void comparesTheProposedExclusionsAsTheyWouldBeStored() {
+      givenGroupsOf("alice", "/externals");
+
+      assertNull(service.designatedConnectorFor(9L, List.of("  /externals ", ""), "alice"));
+   }
+
+   /**
+    * A proposed state decides disconnections: a user the platform cannot identify is
+    * refused, never counted as excluded - the identity cache answers null on a directory
+    * failure, and a deletion on that answer cannot be undone.
+    */
+   @Test
+   void aProposedStateRefusesAUserWithNoIdentity() {
+      when(userAcl.getUserIdentity("alice")).thenReturn(null);
+
+      assertThrows(IllegalStateException.class, () -> service.designatedConnectorFor(9L, List.of("/externals"), "alice"));
+      assertCode("managedConnector.user.required", () -> service.designatedConnectorFor(9L, List.of(), " "));
+   }
+
+   /**
+    * Without exclusions - an empty list, or null for none - no identity is asked, so an
+    * unresolvable one refuses nothing.
+    */
+   @Test
+   void aProposedStateWithoutExclusionsNeedsNoIdentity() {
+      assertEquals(9L, service.designatedConnectorFor(9L, List.of(), "alice"));
+      assertEquals(9L, service.designatedConnectorFor(9L, null, "alice"));
+      verify(userAcl, never()).getUserIdentity(anyString());
+   }
+
    /** What was excluded is what is read back. */
    @Test
    void readsTheExcludedGroups() {
