@@ -256,8 +256,8 @@ export default {
      * Says at once, on the secret itself, that it must be typed again because a TEXT
      * value changed. A rule would stay silent until the administrator touches that
      * field, while the save button is already disabled for its sake. Required secrets
-     * only: an optional one is dropped by the server on the same change, and nothing
-     * here says so - no provider describes an optional secret today.
+     * only: an optional one left out is removed by the server on the same change, and
+     * nothing here says so - no provider describes an optional secret today.
      *
      * @param {object} field the field descriptor
      * @returns {Array} the messages to show, empty when there is nothing to say
