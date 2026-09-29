@@ -138,6 +138,17 @@
           </v-btn>
         </div>
       </div>
+      <!--
+        The change disconnects accounts managed mode attached (EXO-89654): said,
+        with how many, in the platform's confirmation before anything is stored.
+      -->
+      <confirm-dialog
+        ref="disconnectionConfirm"
+        :title="$t('managedConnector.drawer.disconnection.title')"
+        :message="disconnectionConfirmMessage"
+        :ok-label="$t('managedConnector.drawer.disconnection.confirm')"
+        :cancel-label="$t('managedConnector.drawer.disconnection.cancel')"
+        @ok="store" />
     </template>
   </exo-drawer>
 </template>
@@ -183,6 +194,24 @@ export default {
       type: Function,
       required: true,
     },
+    /**
+     * Counts, before anything is stored, the accounts the choice would disconnect:
+     * (connectorId, excludedGroups) => Promise of a number (EXO-89654). Optional:
+     * without it the choice is stored at once.
+     */
+    preview: {
+      type: Function,
+      default: null,
+    },
+    /**
+     * What disconnecting those accounts means for this kind, said in the confirmation
+     * after the count - the add-on's sentence, since a mailbox and a calendar do not
+     * lose the same.
+     */
+    disconnectionMessage: {
+      type: String,
+      default: '',
+    },
   },
   data: () => ({
     opened: false,
@@ -197,8 +226,18 @@ export default {
     /** The picker's items; what is stored is their groupId, nothing else. */
     excludedGroupEntries: [],
     errorMessage: '',
+    /** How many accounts the choice being confirmed disconnects, for the confirmation's message. */
+    pendingDisconnections: 0,
   }),
   computed: {
+    disconnectionConfirmMessage() {
+      const count = this.pendingDisconnections === 1
+        ? this.$t('managedConnector.drawer.disconnection.one')
+        : this.$t('managedConnector.drawer.disconnection.many', {0: this.pendingDisconnections});
+      return [count, this.disconnectionMessage, this.$t('managedConnector.drawer.disconnection.question')]
+        .filter(Boolean)
+        .join(' ');
+    },
     eligibleCandidates() {
       return this.candidates.filter(candidate => candidate.active
         && this.connectionRequirements[candidate.providerName] === false);
@@ -235,6 +274,7 @@ export default {
       const inForce = managed || {};
       this.applied = false;
       this.errorMessage = '';
+      this.pendingDisconnections = 0;
       this.selectedId = inForce.connectorId
         || (this.eligibleCandidates.length === 1 && this.eligibleCandidates[0].id)
         || null;
@@ -317,6 +357,37 @@ export default {
       }
     },
     /**
+     * Applies the choice: counted first when the add-on can count (EXO-89654), and
+     * stored at once when it disconnects nobody - otherwise the confirmation says how
+     * many accounts it disconnects, and {@link store} waits for its OK.
+     *
+     * @returns {Promise} resolves once the choice has been counted or stored
+     */
+    apply() {
+      if (!this.selectedId) {
+        return Promise.resolve();
+      }
+      if (!this.preview) {
+        return this.store();
+      }
+      this.saving = true;
+      this.errorMessage = '';
+      return this.preview(this.selectedId, this.excludedGroupIds)
+        .then(count => {
+          this.saving = false;
+          if (count > 0) {
+            this.pendingDisconnections = count;
+            this.$refs.disconnectionConfirm.open();
+            return null;
+          }
+          return this.store();
+        })
+        .catch(() => {
+          this.saving = false;
+          this.errorMessage = this.$t('managedConnector.drawer.disconnection.countFailed');
+        });
+    },
+    /**
      * Stores the choice through the add-on's own save: this, and nothing before
      * it, is what turns managed mode on.
      *
@@ -327,15 +398,13 @@ export default {
      *
      * @returns {Promise} resolves once the choice has been stored, or refused
      */
-    apply() {
-      if (!this.selectedId) {
-        return Promise.resolve();
-      }
+    store() {
       this.saving = true;
       this.errorMessage = '';
       return this.save(this.selectedId, this.excludedGroupIds)
         .then(managed => {
           this.applied = true;
+          this.pendingDisconnections = 0;
           this.$emit('saved', managed);
           this.close();
         })
