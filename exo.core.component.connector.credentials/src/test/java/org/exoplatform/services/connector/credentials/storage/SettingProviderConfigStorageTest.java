@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -466,5 +468,61 @@ public class SettingProviderConfigStorageTest {
       assertEquals(SettingProviderConfigStorage.MISSING_FIELD,
                    assertThrows(ConnectorCredentialsException.class,
                                 () -> storage.validate(context(), configurationWithSecret(""))).getMessage());
+   }
+
+   /**
+    * The administration screen learns which secrets are stored without the secret: the
+    * answer names the field and the codec is never reached, so the flag cannot become a
+    * way to read what readWithoutSecrets withholds.
+    */
+   @Test
+   void readStoredSecretKeysNamesAStoredSecretWithoutDecodingIt() {
+      givenStored("technicalLogin", "svc2");
+      givenStored("technicalSecret", "ENC(s3cret)");
+
+      assertEquals(Set.of("technicalSecret"), storage.readStoredSecretKeys(context()));
+      verifyNoInteractions(codecInitializer, codec);
+   }
+
+   /**
+    * A secret field with nothing stored is not named, even when the rest of the
+    * configuration is: that is the connector the drawer must ask the secret for, and
+    * a non-secret value is never named whatever is stored.
+    */
+   @Test
+   void readStoredSecretKeysIsEmptyWhenOnlyTheNonSecretValuesAreStored() {
+      givenStored("technicalLogin", "svc2");
+      givenStored("targetLoginField", "email");
+
+      assertEquals(Set.of(), storage.readStoredSecretKeys(context()));
+   }
+
+   /**
+    * Keyed by provider, as every read: a connector moved to a provider that is not the
+    * one its secret was stored for has no secret for the new one.
+    */
+   @Test
+   void readStoredSecretKeysAnswersForTheContextsProviderOnly() {
+      ConnectorCredentialsProvider otherProvider = mock(ConnectorCredentialsProvider.class);
+      when(otherProvider.getName()).thenReturn("other-sudo");
+      when(otherProvider.getSupportedChannels()).thenReturn(EnumSet.allOf(ConnectorCredentialsChannel.class));
+      when(otherProvider.getConfigurationFields())
+                                                  .thenReturn(List.of(new ConnectorCredentialsConfigField("technicalSecret",
+                                                                                                          ConnectorCredentialsConfigFieldType.SECRET,
+                                                                                                          "label.technicalSecret",
+                                                                                                          null,
+                                                                                                          true,
+                                                                                                          List.of())));
+      credentialsService.register(otherProvider);
+      givenStored("technicalSecret", "ENC(s3cret)");
+
+      ConnectorCredentialsContext otherContext = new ConnectorCredentialsContext(2L,
+                                                                                 "other-sudo",
+                                                                                 null,
+                                                                                 ConnectorCredentialsChannel.HTTP,
+                                                                                 "email");
+
+      assertEquals(Set.of(), storage.readStoredSecretKeys(otherContext));
+      assertEquals(Set.of("technicalSecret"), storage.readStoredSecretKeys(context()));
    }
 }

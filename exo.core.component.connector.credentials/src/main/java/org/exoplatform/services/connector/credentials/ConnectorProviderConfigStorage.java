@@ -17,6 +17,7 @@
 package org.exoplatform.services.connector.credentials;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Where a provider's configuration lives, for one connector.
@@ -94,6 +95,25 @@ public interface ConnectorProviderConfigStorage {
     * @return the stored non-secret values, possibly empty
     */
    Map<String, String> readWithoutSecrets(ConnectorCredentialsContext context);
+
+   /**
+    * The SECRET fields of the context's provider that have a value stored, the value
+    * itself neither decoded nor returned.
+    * <p>
+    * What lets an administration screen, which reads through
+    * {@link #readWithoutSecrets(ConnectorCredentialsContext)}, tell a secret left blank
+    * that {@link #store(ConnectorCredentialsContext, Map)} would keep from one it would
+    * refuse as missing. Keyed by provider like every read: a connector moved to another
+    * provider has nothing stored for it yet.
+    * <p>
+    * <b>Entitlement is the caller's</b>, as for
+    * {@link #store(ConnectorCredentialsContext, Map)}: whether a secret exists is itself
+    * administration data.
+    *
+    * @param context the connector and provider to read for
+    * @return the keys of the stored secret fields, empty when none is stored; never null
+    */
+   Set<String> readStoredSecretKeys(ConnectorCredentialsContext context);
 
    /**
     * Removes a connector's configuration for the context's provider.
