@@ -22,9 +22,10 @@ import java.util.Set;
 /**
  * Where a provider's configuration lives, for one connector.
  * <p>
- * An interface, and not because a second implementation is expected: EXO-89646 decides
- * where the sudo provider's code lives, and the storage will follow it. Keeping the
- * contract separate lets that move happen without reopening a caller.
+ * An interface, and not because a second implementation is expected: a provider that
+ * needs a per-connector configuration lives in its own add-on (the BlueMind add-on's
+ * {@code bluemind-sudo}, EXO-90817) and reaches the storage only through this contract,
+ * so its implementation can change without reopening a provider or a caller.
  * <p>
  * Two reads, deliberately. A provider needs its secret in the clear to do its work; an
  * administration screen must never see it. In Java the method name is the only guard
