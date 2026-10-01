@@ -16,11 +16,18 @@
  */
 package org.exoplatform.services.connector.credentials.bluemind;
 
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.LongSupplier;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +47,16 @@ import org.exoplatform.services.log.Log;
  * connectors. The keys carry every input a session depends on as compared fields, so
  * an administrator who points a connector at another server or another technical
  * account gets fresh sessions at once; the old entries are never asked for again and
- * expire. The technical secret is a parameter of the load, never part of a key.
+ * expire. The technical secret is one of those inputs too, through a digest only:
+ * both stores file their entries and their loads in flight under the key and an
+ * HMAC-SHA256 of the secret, made with one random key drawn when this storage is
+ * created and shared by the two stores, so a target session's repair finds the
+ * technical entry its own load filed. Two
+ * connectors that name the same server and technical login with different secrets
+ * therefore never share a session nor wait on each other's login: one with a wrong
+ * secret fails alone, and a rotated secret takes effect at the next production. The
+ * secret itself is never kept, and its digest means nothing outside this node's
+ * memory.
  * <p>
  * <b>Private memory, not the platform's cache layer</b> - the choice
  * {@code caldav-integration}'s {@code BlueMindSessionCache} made for the same kind of
@@ -52,7 +68,9 @@ import org.exoplatform.services.log.Log;
  * <b>Single flight</b>, by hand: concurrent misses on one key - the IMAP prefetch
  * workers of one user, a wave of logins - wait for the one load in progress instead
  * of each opening a session; a failed load is not kept, and every waiter gets the
- * loader's own exception.
+ * loader's own exception - except when the loader's own thread was interrupted: a
+ * waiter that was not tries the load once more itself, so one cancelled worker does
+ * not fail the batch.
  * <p>
  * <b>Bounded</b>: {@code exo.connector.credentials.bluemind.session.ttlSeconds}
  * (default {@value #DEFAULT_TTL_SECONDS}) and
@@ -80,6 +98,8 @@ public class BluemindSessionStorage {
 
    private static final Log                          LOG                  = ExoLogger.getLogger(BluemindSessionStorage.class);
 
+   private static final String                       DIGEST_ALGORITHM     = "HmacSHA256";
+
    private final BluemindAuthClient                  bluemindAuthClient;
 
    private final long                                ttlMillis;
@@ -88,6 +108,9 @@ public class BluemindSessionStorage {
 
    /** Where "now" comes from - a seam, so expiry is tested without waiting. */
    private final LongSupplier                        clock;
+
+   /** The HMAC key the secrets are digested with, drawn once per storage and shared by its two stores: a digest is only ever compared in this memory. */
+   private final SecretKeySpec                       digestKey;
 
    private final Store<TechnicalKey>                 technicalSessions    = new Store<>();
 
@@ -107,6 +130,9 @@ public class BluemindSessionStorage {
       this.ttlMillis = Math.max(0, ttlSeconds) * 1000L;
       this.maxSessions = Math.max(0, maxSessions);
       this.clock = clock;
+      byte[] key = new byte[32];
+      new SecureRandom().nextBytes(key);
+      this.digestKey = new SecretKeySpec(key, DIGEST_ALGORITHM);
    }
 
    /**
@@ -118,7 +144,7 @@ public class BluemindSessionStorage {
     * @throws ConnectorCredentialsException when BlueMind refuses the login or cannot be reached
     */
    public CachedSession technicalSession(TechnicalKey key, String technicalSecret) throws ConnectorCredentialsException {
-      return technicalSessions.get(key, () -> {
+      return technicalSessions.get(key, digestOf(technicalSecret), () -> {
          BluemindSession session = bluemindAuthClient.login(key.apiUrl(), key.technicalLogin(), technicalSecret);
          // Only on a miss: in troubleshooting, the absence of this line is the store working.
          LOG.debug("Opened a BlueMind technical session for {} on {}", key.technicalLogin(), key.apiUrl());
@@ -143,7 +169,8 @@ public class BluemindSessionStorage {
     * @throws ConnectorCredentialsException when BlueMind refuses or cannot be reached
     */
    public CachedSession sudoSession(SudoKey key, String technicalSecret) throws ConnectorCredentialsException {
-      return sudoSessions.get(key, () -> {
+      String digest = digestOf(technicalSecret);
+      return sudoSessions.get(key, digest, () -> {
          long start = clock.getAsLong();
          CachedSession technical = technicalSession(key.technical(), technicalSecret);
          try {
@@ -157,7 +184,7 @@ public class BluemindSessionStorage {
             LOG.debug("Sudo as {} refused with a kept technical session; retrying once with a fresh login", key.target(), e);
             // Only the session that was refused: another thread may already have
             // replaced it with a fresh one, which must survive this repair.
-            technicalSessions.evict(key.technical(), technical);
+            technicalSessions.evict(key.technical(), digest, technical);
             CachedSession fresh = technicalSession(key.technical(), technicalSecret);
             CachedSession session = open(bluemindAuthClient.sudo(key.apiUrl(), fresh.sessionId(), key.target()).authKey());
             LOG.debug("Opened a BlueMind session as {} on {} after a fresh technical login", key.target(), key.apiUrl());
@@ -167,7 +194,9 @@ public class BluemindSessionStorage {
    }
 
    /**
-    * Drops the session kept for one target, so the next production opens a new one.
+    * Drops the session kept for one target, so the next production opens a new one -
+    * whatever secret it was opened with: the caller that invalidates does not hold the
+    * secret.
     *
     * @param key the server, the technical login and the target account
     */
@@ -176,7 +205,8 @@ public class BluemindSessionStorage {
    }
 
    /**
-    * Drops the technical session kept for one server and technical login.
+    * Drops the technical session kept for one server and technical login, whatever
+    * secret it was opened with.
     *
     * @param key the server and the technical login
     */
@@ -197,6 +227,24 @@ public class BluemindSessionStorage {
       return ttlMillis == 0 ? null : session.openedAtMillis() + ttlMillis;
    }
 
+   /**
+    * The keyed digest a secret is filed under, never the secret itself.
+    *
+    * @param technicalSecret the technical account's password, possibly null
+    * @return its HMAC-SHA256 under this store's key, Base64
+    */
+   private String digestOf(String technicalSecret) {
+      try {
+         Mac mac = Mac.getInstance(DIGEST_ALGORITHM);
+         mac.init(digestKey);
+         byte[] secret = technicalSecret == null ? new byte[0] : technicalSecret.getBytes(StandardCharsets.UTF_8);
+         return Base64.getEncoder().encodeToString(mac.doFinal(secret));
+      } catch (GeneralSecurityException e) {
+         // HmacSHA256 is a JCA algorithm every Java platform must ship
+         throw new IllegalStateException("No " + DIGEST_ALGORITHM + " on this platform", e);
+      }
+   }
+
    private CachedSession open(String sessionId) {
       return new CachedSession(sessionId, clock.getAsLong());
    }
@@ -208,20 +256,34 @@ public class BluemindSessionStorage {
    }
 
    /**
-    * One store: the kept sessions and the loads in flight, per key.
+    * What a store files an entry under: the public key and the secret's digest.
+    *
+    * @param <K> the key type
+    * @param key the server, technical login and, for a target session, the target
+    * @param secretDigest the keyed digest of the secret the session is opened with
+    */
+   private record Filed<K>(K key, String secretDigest) {
+   }
+
+   /**
+    * One store: the kept sessions and the loads in flight, per key and secret digest.
     *
     * @param <K> the key type, compared with {@code equals}
     */
    private final class Store<K> {
 
-      private final Map<K, CachedSession>                    kept     = new ConcurrentHashMap<>();
+      private final Map<Filed<K>, CachedSession>                    kept     = new ConcurrentHashMap<>();
 
-      private final Map<K, CompletableFuture<CachedSession>> inFlight = new ConcurrentHashMap<>();
+      private final Map<Filed<K>, CompletableFuture<CachedSession>> inFlight = new ConcurrentHashMap<>();
 
       /** When a full store may next scan for expired entries: a store full of live ones is not rescanned on every production. */
       private volatile long                                  nextPurgeAt;
 
-      CachedSession get(K key, Opening opening) throws ConnectorCredentialsException {
+      CachedSession get(K key, String secretDigest, Opening opening) throws ConnectorCredentialsException {
+         return get(new Filed<>(key, secretDigest), opening, false);
+      }
+
+      private CachedSession get(Filed<K> key, Opening opening, boolean retried) throws ConnectorCredentialsException {
          CachedSession session = live(key);
          if (session != null) {
             return session;
@@ -229,7 +291,20 @@ public class BluemindSessionStorage {
          CompletableFuture<CachedSession> mine = new CompletableFuture<>();
          CompletableFuture<CachedSession> running = inFlight.putIfAbsent(key, mine);
          if (running != null) {
-            return await(running);
+            try {
+               return await(running);
+            } catch (ConnectorCredentialsException e) {
+               // The loader's own thread was interrupted, not this one (whose own
+               // interruption await restores): try the load once more here.
+               if (retried || !(e.getCause() instanceof InterruptedException) || Thread.currentThread().isInterrupted()) {
+                  throw e;
+               }
+               // The failed load may still be registered for a moment: its loader
+               // releases the waiters before it unregisters. Drop it, only if it is
+               // still that load, so the retry cannot join it again.
+               inFlight.remove(key, running);
+               return get(key, opening, true);
+            }
          }
          try {
             // Re-read once the load is ours: a load that completed between the first
@@ -249,17 +324,18 @@ public class BluemindSessionStorage {
          }
       }
 
+      /** Drops the entries of one key, under every secret digest. */
       void evict(K key) {
-         kept.remove(key);
+         kept.keySet().removeIf(filed -> filed.key().equals(key));
       }
 
       /** Drops the entry only while it is still the given session. */
-      void evict(K key, CachedSession stale) {
-         kept.remove(key, stale);
+      void evict(K key, String secretDigest, CachedSession stale) {
+         kept.remove(new Filed<>(key, secretDigest), stale);
       }
 
       /** The kept session when it is still alive; an expired one is dropped on the way. */
-      private CachedSession live(K key) {
+      private CachedSession live(Filed<K> key) {
          CachedSession session = kept.get(key);
          if (session == null) {
             return null;
@@ -271,7 +347,7 @@ public class BluemindSessionStorage {
          return session;
       }
 
-      private void keep(K key, CachedSession session) {
+      private void keep(Filed<K> key, CachedSession session) {
          if (ttlMillis == 0) {
             return;
          }

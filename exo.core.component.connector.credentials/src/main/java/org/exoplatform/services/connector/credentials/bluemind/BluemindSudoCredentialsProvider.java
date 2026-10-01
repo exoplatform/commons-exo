@@ -265,7 +265,8 @@ public class BluemindSudoCredentialsProvider implements ConnectorCredentialsProv
       Map<String, String> configuration = configStorage.readDecrypted(context);
       // Two calls on a miss - the technical login, then the sudo, which spends the
       // session rather than the password - and none on a hit: both sessions are kept
-      // (EXO-89647). The technical secret is handed to the load and never keyed on.
+      // (EXO-89647). The secret is handed to the load, and the sessions are filed under
+      // its keyed digest, never under the secret itself.
       CachedSession session = bluemindSessionStorage.sudoSession(sudoKey(configuration, target),
                                                                  configuration.get(TECHNICAL_SECRET));
       return material(context.getChannel(), target, session.sessionId(), bluemindSessionStorage.expiresAtMillis(session));

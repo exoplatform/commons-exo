@@ -385,6 +385,140 @@ class BluemindSessionStorageTest {
       assertEquals(null, storage.expiresAtMillis(storage.sudoSession(ALICE, SECRET)));
    }
 
+   /**
+    * Two connectors naming the same server and technical login with different secrets
+    * get their own sessions: each secret logs in once, and neither rides the other's.
+    */
+   @Test
+   void aSecondSecretGetsItsOwnSessions() throws Exception {
+      when(bluemind.login(API, TECH, "s3cond")).thenReturn(new BluemindSession("sid-tech-b", "latd"));
+      when(bluemind.sudo(API, "sid-tech-b", "alice@example.com")).thenReturn(new BluemindSession("sid-alice-b", "latd"));
+
+      assertEquals("sid-alice", storage.sudoSession(ALICE, SECRET).sessionId());
+      assertEquals("sid-alice-b", storage.sudoSession(ALICE, "s3cond").sessionId());
+      assertEquals("sid-alice", storage.sudoSession(ALICE, SECRET).sessionId());
+
+      verify(bluemind, times(1)).login(API, TECH, SECRET);
+      verify(bluemind, times(1)).login(API, TECH, "s3cond");
+   }
+
+   /**
+    * A kept session does not vouch for another secret: a connector configured with a
+    * wrong one is refused by BlueMind itself, while the right connector's sessions are
+    * warm.
+    */
+   @Test
+   void aKeptSessionDoesNotVouchForAnotherSecret() throws Exception {
+      when(bluemind.login(API, TECH, "wr0ng")).thenThrow(new BluemindAuthenticationException("BlueMind answered HTTP 401 on /api/auth/login"));
+      storage.sudoSession(ALICE, SECRET);
+
+      assertThrows(BluemindAuthenticationException.class, () -> storage.sudoSession(ALICE, "wr0ng"));
+      assertThrows(BluemindAuthenticationException.class, () -> storage.technicalSession(new TechnicalKey(API, TECH), "wr0ng"));
+      verify(bluemind, times(2)).login(API, TECH, "wr0ng");
+   }
+
+   /**
+    * A connector whose login with a wrong secret is in flight does not hold up, nor
+    * fail, the one with the right secret: their loads are not the same load.
+    */
+   @Test
+   void aWrongSecretInFlightDoesNotFailTheRightOne() throws Exception {
+      CountDownLatch loggingIn = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      when(bluemind.login(API, TECH, "wr0ng")).thenAnswer(invocation -> {
+         loggingIn.countDown();
+         release.await(5, TimeUnit.SECONDS);
+         throw new BluemindAuthenticationException("BlueMind answered HTTP 401 on /api/auth/login");
+      });
+      ExecutorService pool = Executors.newSingleThreadExecutor();
+      try {
+         Future<CachedSession> wrong = pool.submit(() -> storage.sudoSession(ALICE, "wr0ng"));
+         assertTrue(loggingIn.await(5, TimeUnit.SECONDS));
+
+         assertEquals("sid-alice", storage.sudoSession(ALICE, SECRET).sessionId());
+
+         release.countDown();
+         ExecutionException failure = assertThrows(ExecutionException.class, () -> wrong.get(5, TimeUnit.SECONDS));
+         assertTrue(failure.getCause() instanceof BluemindAuthenticationException, String.valueOf(failure.getCause()));
+      } finally {
+         release.countDown();
+         pool.shutdownNow();
+      }
+   }
+
+   /** Invalidation holds no secret: it drops the target's sessions whatever secret opened them. */
+   @Test
+   void evictionDropsTheTargetSessionUnderEverySecret() throws Exception {
+      when(bluemind.login(API, TECH, "s3cond")).thenReturn(new BluemindSession("sid-tech-b", "latd"));
+      when(bluemind.sudo(API, "sid-tech-b", "alice@example.com")).thenReturn(new BluemindSession("sid-alice-b", "latd"));
+      storage.sudoSession(ALICE, SECRET);
+      storage.sudoSession(ALICE, "s3cond");
+      clearInvocations(bluemind);
+
+      storage.evictSudoSession(new SudoKey(API, TECH, "alice@example.com"));
+      storage.sudoSession(ALICE, SECRET);
+      storage.sudoSession(ALICE, "s3cond");
+
+      verify(bluemind, times(1)).sudo(API, "sid-tech", "alice@example.com");
+      verify(bluemind, times(1)).sudo(API, "sid-tech-b", "alice@example.com");
+   }
+
+   /**
+    * The loader's own thread interrupted - a cancelled prefetch worker - fails that
+    * load; a waiter that was not interrupted tries once more itself and gets a session,
+    * instead of the loader's interruption.
+    */
+   @Test
+   void aWaiterRetriesOnceWhenTheLoaderWasInterrupted() throws Exception {
+      CountDownLatch loading = new CountDownLatch(1);
+      AtomicInteger sudoCalls = new AtomicInteger();
+      when(bluemind.sudo(API, "sid-tech", "alice@example.com")).thenAnswer(invocation -> {
+         if (sudoCalls.incrementAndGet() == 1) {
+            loading.countDown();
+            try {
+               new CountDownLatch(1).await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+               Thread.currentThread().interrupt();
+               throw new ConnectorCredentialsException("Interrupted while calling BlueMind on /api/auth/_su", e);
+            }
+         }
+         return new BluemindSession("sid-alice", "latd");
+      });
+      AtomicReference<Throwable> loaderFailure = new AtomicReference<>();
+      Thread loader = new Thread(() -> {
+         try {
+            storage.sudoSession(ALICE, SECRET);
+         } catch (Throwable t) { // NOSONAR - the test records what the loader got
+            loaderFailure.set(t);
+         }
+      });
+      loader.start();
+      assertTrue(loading.await(5, TimeUnit.SECONDS));
+      AtomicReference<Object> waiterGot = new AtomicReference<>();
+      Thread waiter = new Thread(() -> {
+         try {
+            waiterGot.set(storage.sudoSession(ALICE, SECRET));
+         } catch (Throwable t) { // NOSONAR - the test records what the waiter got
+            waiterGot.set(t);
+         }
+      });
+      waiter.start();
+      // Interrupt the loader only once the waiter is parked on the load in flight.
+      long deadline = System.currentTimeMillis() + 5_000L;
+      while (waiter.getState() != Thread.State.WAITING && System.currentTimeMillis() < deadline) {
+         Thread.sleep(5);
+      }
+      assertEquals(Thread.State.WAITING, waiter.getState());
+      loader.interrupt();
+      loader.join(5_000L);
+      waiter.join(5_000L);
+
+      assertTrue(loaderFailure.get() instanceof ConnectorCredentialsException, String.valueOf(loaderFailure.get()));
+      assertTrue(waiterGot.get() instanceof CachedSession, String.valueOf(waiterGot.get()));
+      assertEquals("sid-alice", ((CachedSession) waiterGot.get()).sessionId());
+      assertEquals(2, sudoCalls.get());
+   }
+
    private List<Future<CachedSession>> runConcurrently(int threads) {
       CountDownLatch go = new CountDownLatch(1);
       ExecutorService pool = Executors.newFixedThreadPool(threads);
