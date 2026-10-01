@@ -86,14 +86,7 @@
          <artifactId>portal.component.web.security</artifactId>
          <scope>provided</scope>
       </dependency>
-      <!-- OrganizationService, to read the email of the user a provider impersonates.
-           Reached transitively today; declared because we call it directly. -->
-      <dependency>
-         <groupId>io.meeds.core</groupId>
-         <artifactId>exo.core.component.organization.api</artifactId>
-         <scope>provided</scope>
-      </dependency>
-      <!-- Jackson 2, which BluemindAuthClient and SettingManagedConnectorStorage call
+      <!-- Jackson 2, which SettingManagedConnectorStorage calls
            directly: declared because we call it, reached transitively through
            portal.component.api otherwise. Provided, and version-managed by the BOM. -->
       <dependency>
