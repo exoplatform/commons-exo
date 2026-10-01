@@ -17,6 +17,7 @@
 package org.exoplatform.services.connector.credentials.storage;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -304,6 +305,19 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
          }
       }
       return values;
+   }
+
+   /**
+    * The same raw read {@code retainedFields} makes to decide whether a blank secret is
+    * kept, so the answer matches what a store would do; the codec is never touched.
+    */
+   @Override
+   public Set<String> readStoredSecretKeys(ConnectorCredentialsContext context) {
+      return describedFields(context).stream()
+                                     .filter(this::isSecret)
+                                     .map(ConnectorCredentialsConfigField::getKey)
+                                     .filter(key -> storedValue(context, key) != null)
+                                     .collect(Collectors.toCollection(LinkedHashSet::new));
    }
 
    /**
