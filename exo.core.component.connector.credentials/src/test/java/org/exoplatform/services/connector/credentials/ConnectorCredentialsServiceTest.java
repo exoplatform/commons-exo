@@ -80,6 +80,23 @@ class ConnectorCredentialsServiceTest {
       assertSame(expected, service.produce(context));
    }
 
+   /**
+    * A provider's refusal of the target account reaches the connector as that type,
+    * which is how a connector tells it from an unreachable authority.
+    */
+   @Test
+   void testProduceLetsATargetRefusalReachTheCallerAsIs() throws Exception {
+      ConnectorCredentialsProvider provider = provider("bluemind-sudo", EnumSet.of(ConnectorCredentialsChannel.HTTP));
+      ConnectorCredentialsContext context =
+                                          new ConnectorCredentialsContext(1L, "bluemind-sudo", TEST_USER, ConnectorCredentialsChannel.HTTP, "caldav");
+      ConnectorTargetRefusedException refusal = new ConnectorTargetRefusedException("refused", null);
+      when(provider.produce(context)).thenThrow(refusal);
+
+      ConnectorCredentialsService service = serviceWith(provider);
+
+      assertSame(refusal, assertThrows(ConnectorTargetRefusedException.class, () -> service.produce(context)));
+   }
+
    @Test
    void testProduceThrowsWhenNoProviderRegisteredForName() {
       ConnectorCredentialsService service = serviceWith();
