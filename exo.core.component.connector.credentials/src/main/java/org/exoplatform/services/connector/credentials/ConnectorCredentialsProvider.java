@@ -67,7 +67,8 @@ public interface ConnectorCredentialsProvider {
     *
     * @throws ConnectorCredentialsException if material cannot be produced (remote call
     *            failure, technical account misconfigured, target user unknown to the
-    *            remote server...)
+    *            remote server...); a {@link ConnectorTargetRefusedException} when the
+    *            remote server refused the target account itself
     */
    ConnectorCredentials produce(ConnectorCredentialsContext context) throws ConnectorCredentialsException;
 
