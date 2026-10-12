@@ -55,7 +55,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 // Icon color
 @orangeColor: #ff9916;
-@colorIconDefault: @primaryColor;
+// Legacy icon colour: the configured icon colour of the container (--appIconColor) or of the platform (--allPagesBaseIconColor), the primary colour when none is set
+@colorIconDefault: ~"var(--appIconColor, var(--allPagesBaseIconColor, @{primaryColor}))";
 @colorIconExtra: @primaryColor;
 @colorIconPrimary: @primaryColor;
 @colorIconOrange: var(--allPagesColorIconOrange, @orangeColor);
