@@ -136,8 +136,11 @@ public interface ConnectorCredentialsProvider {
     *
     * @param values what was posted, keyed by descriptor field; read-only
     * @throws ConnectorCredentialsException carrying the message code the administration
-    *           screen shows - a key of the provider's own resource bundle. The
-    *           configuration is then not stored.
+    *           screen shows. The shared configuration form resolves it through the
+    *           {@code locale.portlet.credentialsProviderConfig} bundle, and a host screen
+    *           through that bundle or its own, so an add-on's provider puts the key in its
+    *           {@code credentialsProviderConfig_en.properties}. The configuration is then
+    *           not stored.
     */
    default void validateConfiguration(Map<String, String> values) throws ConnectorCredentialsException {
       // no rule beyond the field descriptors
