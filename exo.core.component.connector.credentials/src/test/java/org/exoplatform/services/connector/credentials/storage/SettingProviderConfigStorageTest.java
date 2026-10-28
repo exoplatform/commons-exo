@@ -28,6 +28,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -82,6 +83,8 @@ public class SettingProviderConfigStorageTest {
 
    private AbstractCodec             codec;
 
+   private ConnectorCredentialsProvider sudo;
+
    private MockedStatic<ExoContainerContext> containerContext;
 
    /**
@@ -106,7 +109,8 @@ public class SettingProviderConfigStorageTest {
       lenient().when(codec.decode(anyString()))
                .thenAnswer(call -> call.getArgument(0, String.class).replaceAll("^ENC\\((.*)\\)$", "$1"));
       credentialsService = new ConnectorCredentialsService();
-      credentialsService.register(sudoProvider());
+      sudo = sudoProvider();
+      credentialsService.register(sudo);
       storage = new SettingProviderConfigStorage(settingService, codecInitializer, credentialsService);
    }
 
@@ -573,5 +577,101 @@ public class SettingProviderConfigStorageTest {
 
       assertEquals(Set.of(), storage.readStoredSecretKeys(otherContext));
       assertEquals(Set.of("technicalSecret"), storage.readStoredSecretKeys(context()));
+   }
+
+   /**
+    * The provider's own rule refuses the values: validate answers with the provider's
+    * message code, and store writes nothing. This is the save-time hook a provider uses
+    * for what its field descriptors cannot say, such as an address with a path.
+    */
+   @Test
+   void aProviderRefusalStopsTheSaveWithItsCode() throws Exception {
+      doThrow(new ConnectorCredentialsException("provider.refusedAddress")).when(sudo).validateConfiguration(any());
+
+      assertEquals("provider.refusedAddress",
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.validate(context(), aValidConfiguration())).getMessage());
+      assertEquals("provider.refusedAddress",
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.store(context(), aValidConfiguration())).getMessage());
+      verify(sudo, times(2)).validateConfiguration(aValidConfiguration());
+      verify(settingService, never()).set(any(Context.class), any(Scope.class), anyString(), any(SettingValue.class));
+      verify(settingService, never()).remove(any(Context.class), any(Scope.class), anyString());
+   }
+
+   /** A refusal with no code is answered with the storage's own, so the screen always has one to show. */
+   @Test
+   void aProviderRefusalWithoutACodeIsAnInvalidValue() throws Exception {
+      doThrow(new ConnectorCredentialsException(null)).when(sudo).validateConfiguration(any());
+
+      assertEquals(SettingProviderConfigStorage.INVALID_VALUE,
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.validate(context(), aValidConfiguration())).getMessage());
+   }
+
+   /** The descriptor checks come first: the provider is never asked about a key it did not declare. */
+   @Test
+   void theProviderIsAskedOnlyAfterTheDescriptorChecks() throws Exception {
+      assertThrows(ConnectorCredentialsException.class, () -> storage.validate(context(), Map.of("nosuchfield", "x")));
+
+      verify(sudo, never()).validateConfiguration(any());
+   }
+
+   /**
+    * A provider that does not implement the hook keeps its default, which accepts: the
+    * configuration is validated and stored on its descriptor alone. A real
+    * implementation rather than a mock, since a mock never runs a default method.
+    */
+   @Test
+   void theDefaultHookAccepts() throws Exception {
+      ConnectorCredentialsProvider withDefault = new ConnectorCredentialsProvider() {
+         @Override
+         public String getName() {
+            return "default-hook";
+         }
+
+         @Override
+         public Set<ConnectorCredentialsChannel> getSupportedChannels() {
+            return EnumSet.allOf(ConnectorCredentialsChannel.class);
+         }
+
+         @Override
+         public boolean requiresUserAction() {
+            return false;
+         }
+
+         @Override
+         public org.exoplatform.services.connector.credentials.ConnectorCredentials produce(ConnectorCredentialsContext context) {
+            return null;
+         }
+
+         @Override
+         public void invalidate(ConnectorCredentialsContext context) {
+            // nothing cached
+         }
+
+         @Override
+         public List<ConnectorCredentialsConfigField> getConfigurationFields() {
+            return List.of(new ConnectorCredentialsConfigField("apiUrl",
+                                                               ConnectorCredentialsConfigFieldType.TEXT,
+                                                               "label.apiUrl",
+                                                               null,
+                                                               true,
+                                                               List.of()));
+         }
+      };
+      credentialsService.register(withDefault);
+      ConnectorCredentialsContext defaultContext = new ConnectorCredentialsContext(2L,
+                                                                                   "default-hook",
+                                                                                   null,
+                                                                                   ConnectorCredentialsChannel.HTTP,
+                                                                                   "email");
+      Map<String, String> values = Map.of("apiUrl", "https://mail.example.org/some/path");
+
+      assertDoesNotThrow(() -> withDefault.validateConfiguration(values));
+      assertDoesNotThrow(() -> storage.validate(defaultContext, values));
+      storage.store(defaultContext, values);
+
+      assertEquals("https://mail.example.org/some/path", settingWritten("default-hook/email/2/apiUrl"));
    }
 }
