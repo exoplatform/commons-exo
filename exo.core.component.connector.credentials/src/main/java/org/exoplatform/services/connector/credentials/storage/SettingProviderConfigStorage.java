@@ -374,8 +374,10 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * connector's removal must not touch the others. The prefix ends with a slash, so
     * connector 1 never takes connector 10's keys.
     * <p>
-    * Transactional for the write's reason in reverse: a half-removed configuration
-    * leaves a technical secret behind that nobody administers any more.
+    * Not all or nothing: {@code @ContainerTransactional} opens no database transaction,
+    * and each key is removed in its own commit. A failure part-way leaves the keys not
+    * yet removed in place, and calling delete again removes them, since it reads the
+    * scope afresh.
     */
    @Override
    @ContainerTransactional
