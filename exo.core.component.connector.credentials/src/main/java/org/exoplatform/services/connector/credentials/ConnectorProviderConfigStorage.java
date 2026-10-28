@@ -52,7 +52,10 @@ public interface ConnectorProviderConfigStorage {
     *          unassigned, validation does not use it
     * @param values what was posted, keyed by descriptor field
     * @throws ConnectorCredentialsException carrying a message code when a key is unknown,
-    *           a required field empty, or a value outside a field's options
+    *           a required field empty, a value outside a field's options, or when the
+    *           provider's own
+    *           {@link ConnectorCredentialsProvider#validateConfiguration(Map)} refuses
+    *           the values
     */
    void validate(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException;
 
