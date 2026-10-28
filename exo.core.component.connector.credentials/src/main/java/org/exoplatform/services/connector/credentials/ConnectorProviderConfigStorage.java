@@ -117,7 +117,10 @@ public interface ConnectorProviderConfigStorage {
    Set<String> readStoredSecretKeys(ConnectorCredentialsContext context);
 
    /**
-    * Removes a connector's configuration for the context's provider.
+    * Removes a connector's configuration for the context's provider: every value stored
+    * for that provider, connector kind and connector id, whether or not the provider is
+    * still registered. A connector whose provider's add-on was uninstalled is deleted
+    * or moved to another provider without leaving its secret behind.
     * <p>
     * Entitlement is the caller's, as for
     * {@link #store(ConnectorCredentialsContext, Map)}.
