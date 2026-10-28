@@ -215,9 +215,14 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * cannot post it back); on a required field with nothing stored it is the first
     * save, and missing; on an optional field it is an erasure, and the entry goes.
     * <p>
-    * Transactional because one configuration is several setting entries: a failure on
-    * the second field would otherwise leave a login stored against a secret that never
-    * was.
+    * Every check and every encryption happens before the first write, so a refusal or a
+    * codec failure writes nothing. The writes themselves are not all or nothing:
+    * {@code @ContainerTransactional} opens no database transaction, and each entry is
+    * committed on its own. A failure part-way leaves the entries already written with
+    * their new value and the others with their old one. Storing the same values again
+    * rewrites every entry, provided the call carries the secret again: with the new
+    * free-text values already stored, a blank secret would read as "unchanged" and keep
+    * the old one.
     */
    @Override
    @ContainerTransactional
