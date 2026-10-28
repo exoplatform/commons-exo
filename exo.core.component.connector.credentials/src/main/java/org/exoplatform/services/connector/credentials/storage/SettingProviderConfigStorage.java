@@ -321,8 +321,17 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
    }
 
    /**
-    * Field by field rather than through the scope-wide remove: the scope holds every
-    * connector's configuration, and one connector's removal must not touch the others.
+    * Removes every key stored under the connector's {@code <provider>/<kind>/<id>/}
+    * prefix, whatever the fields, so it needs no registered provider: the provider's
+    * descriptor is not read. A connector whose provider is no longer installed (its
+    * add-on removed) still loses all of its configuration, its encrypted secret
+    * included, when it is deleted or moved to another provider.
+    * <p>
+    * The scope is read once, then each key goes through
+    * {@code remove(Context, Scope, key)}, so the settings cache evicts it. Not the
+    * scope-wide remove: the scope holds every connector's configuration, and one
+    * connector's removal must not touch the others. The prefix ends with a slash, so
+    * connector 1 never takes connector 10's keys.
     * <p>
     * Transactional for the write's reason in reverse: a half-removed configuration
     * leaves a technical secret behind that nobody administers any more.
@@ -330,8 +339,17 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
    @Override
    @ContainerTransactional
    public void delete(ConnectorCredentialsContext context) {
-      for (ConnectorCredentialsConfigField field : describedFields(context)) {
-         settingService.remove(Context.GLOBAL, SCOPE, keyOf(context, field.getKey()));
+      String prefix = keyOf(context, "");
+      Map<String, SettingValue> stored = settingService.getSettingsByContextAndScope(Context.GLOBAL.getName(),
+                                                                                     Context.GLOBAL.getId(),
+                                                                                     SCOPE.getName(),
+                                                                                     SCOPE.getId());
+      if (stored == null) {
+         return;
+      }
+      List<String> keys = stored.keySet().stream().filter(key -> key != null && key.startsWith(prefix)).toList();
+      for (String key : keys) {
+         settingService.remove(Context.GLOBAL, SCOPE, key);
       }
    }
 
