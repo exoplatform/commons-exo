@@ -18,6 +18,7 @@ package org.exoplatform.services.connector.credentials;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -118,6 +119,28 @@ public interface ConnectorCredentialsProvider {
     */
    default List<ConnectorCredentialsConfigField> getConfigurationFields() {
       return Collections.emptyList();
+   }
+
+   /**
+    * Checks a configuration against a rule its field descriptors cannot state, before
+    * anything of it is written: a value whose shape this provider refuses (an address
+    * with a path where only a scheme, host and port make sense, say).
+    * <p>
+    * The generic storage calls it on every validate and store, after its own checks
+    * (unknown keys, required fields, closed lists), so the values handed here use only
+    * the declared keys. They are the values as posted: a SECRET left blank because the
+    * stored one is kept arrives blank, and the secret itself is never handed back.
+    * <p>
+    * The default accepts everything, so a provider without such a rule implements
+    * nothing.
+    *
+    * @param values what was posted, keyed by descriptor field; read-only
+    * @throws ConnectorCredentialsException carrying the message code the administration
+    *           screen shows - a key of the provider's own resource bundle. The
+    *           configuration is then not stored.
+    */
+   default void validateConfiguration(Map<String, String> values) throws ConnectorCredentialsException {
+      // no rule beyond the field descriptors
    }
 
 }
