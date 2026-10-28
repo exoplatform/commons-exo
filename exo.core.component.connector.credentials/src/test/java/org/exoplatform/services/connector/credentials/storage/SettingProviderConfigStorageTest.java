@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mockStatic;
@@ -340,18 +341,66 @@ public class SettingProviderConfigStorageTest {
    /**
     * Removing a connector must leave nothing of its configuration behind - a stale
     * technical secret is a credential nobody administers any more. It goes key by key:
-    * the scope-wide remove would take every other connector's configuration with it,
-    * which is the failure the isolation test below guards.
+    * the scope-wide remove would take every other connector's configuration with it.
+    * Connector 20, the other kind, the other provider and an unrelated key under the
+    * same scope keep theirs.
     */
    @Test
    void deleteRemovesEveryFieldOfThatConnectorOnly() {
+      givenScopeHolds("bluemind-sudo/email/2/technicalLogin",
+                      "bluemind-sudo/email/2/technicalSecret",
+                      "bluemind-sudo/email/2/targetLoginField",
+                      "bluemind-sudo/email/20/technicalSecret",
+                      "bluemind-sudo/caldav/2/technicalSecret",
+                      "other-sudo/email/2/technicalSecret",
+                      "unrelated");
+
       storage.delete(context());
 
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/technicalLogin"));
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/technicalSecret"));
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/targetLoginField"));
+      verify(settingService, times(3)).remove(any(Context.class), any(Scope.class), anyString());
       verify(settingService, never()).remove(any(Context.class), any(Scope.class));
       verify(settingService, never()).remove(any(Context.class));
+   }
+
+   /**
+    * The provider's add-on is uninstalled, so no registered provider declares the
+    * fields: the delete still removes every key stored for the connector, the
+    * encrypted secret included, and a field the provider never declared too. Reading
+    * the descriptor would leave all of them behind, to come back if the provider is
+    * chosen again for that connector id.
+    */
+   @Test
+   void deleteRemovesTheConfigurationOfAProviderThatIsNotRegistered() {
+      ConnectorCredentialsContext uninstalled = new ConnectorCredentialsContext(2L,
+                                                                                "uninstalled-sudo",
+                                                                                null,
+                                                                                ConnectorCredentialsChannel.HTTP,
+                                                                                "email");
+      givenScopeHolds("uninstalled-sudo/email/2/apiUrl",
+                      "uninstalled-sudo/email/2/technicalLogin",
+                      "uninstalled-sudo/email/2/technicalSecret",
+                      "uninstalled-sudo/email/2/targetLoginField",
+                      "bluemind-sudo/email/2/technicalSecret");
+
+      storage.delete(uninstalled);
+
+      for (String field : List.of("apiUrl", "technicalLogin", "technicalSecret", "targetLoginField")) {
+         verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("uninstalled-sudo/email/2/" + field));
+      }
+      verify(settingService, never()).remove(any(Context.class), any(Scope.class), eq("bluemind-sudo/email/2/technicalSecret"));
+   }
+
+   /** The one read delete makes: the whole connectorCredentials scope of the GLOBAL context. */
+   private void givenScopeHolds(String... keys) {
+      Map<String, SettingValue> stored = new HashMap<>();
+      for (String key : keys) {
+         stored.put(key, SettingValue.create("v"));
+      }
+      when(settingService.getSettingsByContextAndScope("GLOBAL", "GLOBAL", "APPLICATION", "connectorCredentials"))
+                                                                                                                 .thenReturn(stored);
    }
 
    /**
