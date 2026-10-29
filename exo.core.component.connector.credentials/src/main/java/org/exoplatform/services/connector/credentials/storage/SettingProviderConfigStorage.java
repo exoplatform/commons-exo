@@ -216,16 +216,17 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * save, and missing; on an optional field it is an erasure, and the entry goes.
     * <p>
     * Every check and every encryption happens before the first write, so a refusal or a
-    * codec failure writes nothing. The writes themselves are not all or nothing:
-    * {@code @ContainerTransactional} opens no database transaction, and each entry is
-    * committed on its own. A failure part-way leaves the entries already written with
-    * their new value and the others with their old one. Storing the same values again
-    * rewrites every entry, provided the call carries the secret again: with the new
-    * free-text values already stored, a blank secret would read as "unchanged" and keep
-    * the old one.
+    * codec failure writes nothing. The writes are all or nothing in the database: they
+    * run in one transaction ({@code @ContainerTransactional(atomic = true)}), which the
+    * settings store's own writes join, so a failure on any entry rolls back the ones
+    * written before it. A stored secret is never paired with free-text values it was not
+    * saved with. On the node that ran a save that rolled back, the settings cache may
+    * still return the new value of an entry written before the failure, until that entry
+    * leaves the cache: {@code CacheSettingServiceImpl.set} puts the value in the cache
+    * before it writes it to the database.
     */
    @Override
-   @ContainerTransactional
+   @ContainerTransactional(atomic = true)
    public void store(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException {
       List<ConnectorCredentialsConfigField> fields = describedFields(context);
       Set<String> retainedFields = retainedFields(context, fields, values);
@@ -379,13 +380,14 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * connector's removal must not touch the others. The prefix ends with a slash, so
     * connector 1 never takes connector 10's keys.
     * <p>
-    * Not all or nothing: {@code @ContainerTransactional} opens no database transaction,
-    * and each key is removed in its own commit. A failure part-way leaves the keys not
-    * yet removed in place, and calling delete again removes them, since it reads the
-    * scope afresh.
+    * All or nothing in the database: the removals run in one transaction
+    * ({@code @ContainerTransactional(atomic = true)}), so a failure on any key keeps every
+    * key in place. Calling delete again removes them, since it reads the scope afresh.
+    * The settings cache evicts each key before its removal reaches the database, so a
+    * removal that rolled back is read again from the database.
     */
    @Override
-   @ContainerTransactional
+   @ContainerTransactional(atomic = true)
    public void delete(ConnectorCredentialsContext context) {
       String prefix = keyOf(context, "");
       Map<String, SettingValue> stored = settingService.getSettingsByContextAndScope(Context.GLOBAL.getName(),
