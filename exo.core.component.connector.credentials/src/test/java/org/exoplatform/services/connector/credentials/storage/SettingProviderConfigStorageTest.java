@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -445,27 +446,29 @@ public class SettingProviderConfigStorageTest {
    }
 
    /**
-    * One configuration is several setting entries, so a write must be all or nothing:
-    * a failure on the second field would otherwise leave a login pointing at a secret
-    * that was never stored. Same for the removal.
+    * One configuration is several setting entries, so a write runs in one database
+    * transaction: a failure on the secret's entry would otherwise leave new free-text
+    * values committed beside the old secret. Same for the removal.
     * <p>
-    * The aspect is woven into these two methods at build time - they are the first
-    * annotated methods in the whole of commons-exo, where the parent pom's ajc had been
-    * running against no join point at all until now. What that costs the suite is
-    * handled in setUp, not here. The assertion stays on the annotation because the
-    * atomicity itself is unobservable against a mocked SettingService, and the
-    * annotation is what the aspect keys on.
+    * The aspect is woven into these two methods at build time and keys on
+    * {@code atomic}: without it, it opens no transaction and each entry commits on its
+    * own. The rollback itself is unobservable against a mocked SettingService, so this
+    * test pins the attribute, and SettingProviderConfigStorageDatabaseTest shows the
+    * rollback against the real settings store. What the woven advice costs this suite is
+    * handled in setUp, not here.
     */
    @Test
-   void writesAreTransactional() throws Exception {
-      assertNotNull(SettingProviderConfigStorage.class.getMethod("store",
-                                                                 ConnectorCredentialsContext.class,
-                                                                 Map.class)
-                                                      .getAnnotation(ContainerTransactional.class),
-                    "a half-written configuration is a connector that authenticates nobody");
-      assertNotNull(SettingProviderConfigStorage.class.getMethod("delete", ConnectorCredentialsContext.class)
-                                                      .getAnnotation(ContainerTransactional.class),
-                    "a half-removed configuration leaves a technical secret nobody administers");
+   void writesRunInOneTransaction() throws Exception {
+      ContainerTransactional store = SettingProviderConfigStorage.class.getMethod("store",
+                                                                                  ConnectorCredentialsContext.class,
+                                                                                  Map.class)
+                                                                       .getAnnotation(ContainerTransactional.class);
+      assertNotNull(store, "store must run in a container transaction");
+      assertTrue(store.atomic(), "a store failing part-way would pair new free-text values with the old secret");
+      ContainerTransactional delete = SettingProviderConfigStorage.class.getMethod("delete", ConnectorCredentialsContext.class)
+                                                                        .getAnnotation(ContainerTransactional.class);
+      assertNotNull(delete, "delete must run in a container transaction");
+      assertTrue(delete.atomic(), "a delete failing part-way would leave a technical secret nobody administers");
    }
 
   /**

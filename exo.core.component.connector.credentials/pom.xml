@@ -99,5 +99,12 @@
          <artifactId>exo.kernel.commons.test</artifactId>
          <scope>test</scope>
       </dependency>
+      <!-- The portal test core boots a portal container on an in-memory database: what
+           SettingProviderConfigStorageDatabaseTest needs to see a save not commit. -->
+      <dependency>
+         <groupId>io.meeds.portal</groupId>
+         <artifactId>portal.component.test.core</artifactId>
+         <scope>test</scope>
+      </dependency>
    </dependencies>
 </project>
