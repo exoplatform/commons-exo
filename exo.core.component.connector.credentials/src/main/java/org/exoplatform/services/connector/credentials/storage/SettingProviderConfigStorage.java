@@ -223,7 +223,12 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * saved with. On the node that ran a save that rolled back, the settings cache may
     * still return the new value of an entry written before the failure, until that entry
     * leaves the cache: {@code CacheSettingServiceImpl.set} puts the value in the cache
-    * before it writes it to the database.
+    * before it writes it to the database. The same ordering opens a window on a save that
+    * commits: a read of an entry on that node between its cache update and the commit can
+    * reload the row still committed, and the cache then serves that former value until the
+    * entry leaves it. The race is the settings cache's (it updates before the commit
+    * rather than after); the one transaction widens its window from one write to the
+    * whole configuration.
     */
    @Override
    @ContainerTransactional(atomic = true)
@@ -384,7 +389,12 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * ({@code @ContainerTransactional(atomic = true)}), so a failure on any key keeps every
     * key in place. Calling delete again removes them, since it reads the scope afresh.
     * The settings cache evicts each key before its removal reaches the database, so a
-    * removal that rolled back is read again from the database.
+    * removal that rolled back is read again from the database. The same ordering opens a
+    * window on a delete that commits: a read of a key on that node between its eviction
+    * and the commit reloads the row still committed, and the cache then serves it, a
+    * removed connector's encrypted secret included, until the entry leaves the cache. The
+    * race is the settings cache's (it evicts before the commit rather than after); the one
+    * transaction widens its window from one removal to the whole configuration.
     */
    @Override
    @ContainerTransactional(atomic = true)
