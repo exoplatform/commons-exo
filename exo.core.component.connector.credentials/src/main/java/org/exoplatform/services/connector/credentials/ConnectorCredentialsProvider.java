@@ -136,9 +136,11 @@ public interface ConnectorCredentialsProvider {
     *
     * @param values what was posted, keyed by descriptor field; read-only
     * @throws ConnectorCredentialsException carrying the message code the administration
-    *           screen shows. The shared configuration form resolves it through the
-    *           {@code locale.portlet.credentialsProviderConfig} bundle, and a host screen
-    *           through that bundle or its own, so an add-on's provider puts the key in its
+    *           screen shows. The host's create and update drawers show it, through the
+    *           page's VueI18n, which the shared credentials module fills with the
+    *           {@code locale.portlet.credentialsProviderConfig} bundle (the shared
+    *           configuration form never receives the refusal), or through the host's own
+    *           bundle. An add-on's provider therefore puts the key in its
     *           {@code credentialsProviderConfig_en.properties}. The configuration is then
     *           not stored.
     */
