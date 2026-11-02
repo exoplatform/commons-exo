@@ -20,13 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -81,6 +84,8 @@ public class SettingProviderConfigStorageTest {
 
    private AbstractCodec             codec;
 
+   private ConnectorCredentialsProvider sudo;
+
    private MockedStatic<ExoContainerContext> containerContext;
 
    /**
@@ -105,7 +110,8 @@ public class SettingProviderConfigStorageTest {
       lenient().when(codec.decode(anyString()))
                .thenAnswer(call -> call.getArgument(0, String.class).replaceAll("^ENC\\((.*)\\)$", "$1"));
       credentialsService = new ConnectorCredentialsService();
-      credentialsService.register(sudoProvider());
+      sudo = sudoProvider();
+      credentialsService.register(sudo);
       storage = new SettingProviderConfigStorage(settingService, codecInitializer, credentialsService);
    }
 
@@ -340,18 +346,66 @@ public class SettingProviderConfigStorageTest {
    /**
     * Removing a connector must leave nothing of its configuration behind - a stale
     * technical secret is a credential nobody administers any more. It goes key by key:
-    * the scope-wide remove would take every other connector's configuration with it,
-    * which is the failure the isolation test below guards.
+    * the scope-wide remove would take every other connector's configuration with it.
+    * Connector 20, the other kind, the other provider and an unrelated key under the
+    * same scope keep theirs.
     */
    @Test
    void deleteRemovesEveryFieldOfThatConnectorOnly() {
+      givenScopeHolds("bluemind-sudo/email/2/technicalLogin",
+                      "bluemind-sudo/email/2/technicalSecret",
+                      "bluemind-sudo/email/2/targetLoginField",
+                      "bluemind-sudo/email/20/technicalSecret",
+                      "bluemind-sudo/caldav/2/technicalSecret",
+                      "other-sudo/email/2/technicalSecret",
+                      "unrelated");
+
       storage.delete(context());
 
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/technicalLogin"));
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/technicalSecret"));
       verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("bluemind-sudo/email/2/targetLoginField"));
+      verify(settingService, times(3)).remove(any(Context.class), any(Scope.class), anyString());
       verify(settingService, never()).remove(any(Context.class), any(Scope.class));
       verify(settingService, never()).remove(any(Context.class));
+   }
+
+   /**
+    * The provider's add-on is uninstalled, so no registered provider declares the
+    * fields: the delete still removes every key stored for the connector, the
+    * encrypted secret included, and a field the provider never declared too. Reading
+    * the descriptor would leave all of them behind, to come back if the provider is
+    * chosen again for that connector id.
+    */
+   @Test
+   void deleteRemovesTheConfigurationOfAProviderThatIsNotRegistered() {
+      ConnectorCredentialsContext uninstalled = new ConnectorCredentialsContext(2L,
+                                                                                "uninstalled-sudo",
+                                                                                null,
+                                                                                ConnectorCredentialsChannel.HTTP,
+                                                                                "email");
+      givenScopeHolds("uninstalled-sudo/email/2/apiUrl",
+                      "uninstalled-sudo/email/2/technicalLogin",
+                      "uninstalled-sudo/email/2/technicalSecret",
+                      "uninstalled-sudo/email/2/targetLoginField",
+                      "bluemind-sudo/email/2/technicalSecret");
+
+      storage.delete(uninstalled);
+
+      for (String field : List.of("apiUrl", "technicalLogin", "technicalSecret", "targetLoginField")) {
+         verify(settingService).remove(eq(Context.GLOBAL), any(Scope.class), eq("uninstalled-sudo/email/2/" + field));
+      }
+      verify(settingService, never()).remove(any(Context.class), any(Scope.class), eq("bluemind-sudo/email/2/technicalSecret"));
+   }
+
+   /** The one read delete makes: the whole connectorCredentials scope of the GLOBAL context. */
+   private void givenScopeHolds(String... keys) {
+      Map<String, SettingValue> stored = new HashMap<>();
+      for (String key : keys) {
+         stored.put(key, SettingValue.create("v"));
+      }
+      when(settingService.getSettingsByContextAndScope("GLOBAL", "GLOBAL", "APPLICATION", "connectorCredentials"))
+                                                                                                                 .thenReturn(stored);
    }
 
    /**
@@ -392,27 +446,29 @@ public class SettingProviderConfigStorageTest {
    }
 
    /**
-    * One configuration is several setting entries, so a write must be all or nothing:
-    * a failure on the second field would otherwise leave a login pointing at a secret
-    * that was never stored. Same for the removal.
+    * One configuration is several setting entries, so a write runs in one database
+    * transaction: a failure on the secret's entry would otherwise leave new free-text
+    * values committed beside the old secret. Same for the removal.
     * <p>
-    * The aspect is woven into these two methods at build time - they are the first
-    * annotated methods in the whole of commons-exo, where the parent pom's ajc had been
-    * running against no join point at all until now. What that costs the suite is
-    * handled in setUp, not here. The assertion stays on the annotation because the
-    * atomicity itself is unobservable against a mocked SettingService, and the
-    * annotation is what the aspect keys on.
+    * The aspect is woven into these two methods at build time and keys on
+    * {@code atomic}: without it, it opens no transaction and each entry commits on its
+    * own. The rollback itself is unobservable against a mocked SettingService, so this
+    * test pins the attribute, and SettingProviderConfigStorageDatabaseTest shows the
+    * rollback against the real settings store. What the woven advice costs this suite is
+    * handled in setUp, not here.
     */
    @Test
-   void writesAreTransactional() throws Exception {
-      assertNotNull(SettingProviderConfigStorage.class.getMethod("store",
-                                                                 ConnectorCredentialsContext.class,
-                                                                 Map.class)
-                                                      .getAnnotation(ContainerTransactional.class),
-                    "a half-written configuration is a connector that authenticates nobody");
-      assertNotNull(SettingProviderConfigStorage.class.getMethod("delete", ConnectorCredentialsContext.class)
-                                                      .getAnnotation(ContainerTransactional.class),
-                    "a half-removed configuration leaves a technical secret nobody administers");
+   void writesRunInOneTransaction() throws Exception {
+      ContainerTransactional store = SettingProviderConfigStorage.class.getMethod("store",
+                                                                                  ConnectorCredentialsContext.class,
+                                                                                  Map.class)
+                                                                       .getAnnotation(ContainerTransactional.class);
+      assertNotNull(store, "store must run in a container transaction");
+      assertTrue(store.atomic(), "a store failing part-way would pair new free-text values with the old secret");
+      ContainerTransactional delete = SettingProviderConfigStorage.class.getMethod("delete", ConnectorCredentialsContext.class)
+                                                                        .getAnnotation(ContainerTransactional.class);
+      assertNotNull(delete, "delete must run in a container transaction");
+      assertTrue(delete.atomic(), "a delete failing part-way would leave a technical secret nobody administers");
    }
 
   /**
@@ -524,5 +580,101 @@ public class SettingProviderConfigStorageTest {
 
       assertEquals(Set.of(), storage.readStoredSecretKeys(otherContext));
       assertEquals(Set.of("technicalSecret"), storage.readStoredSecretKeys(context()));
+   }
+
+   /**
+    * The provider's own rule refuses the values: validate answers with the provider's
+    * message code, and store writes nothing. This is the save-time hook a provider uses
+    * for what its field descriptors cannot say, such as an address with a path.
+    */
+   @Test
+   void aProviderRefusalStopsTheSaveWithItsCode() throws Exception {
+      doThrow(new ConnectorCredentialsException("provider.refusedAddress")).when(sudo).validateConfiguration(any());
+
+      assertEquals("provider.refusedAddress",
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.validate(context(), aValidConfiguration())).getMessage());
+      assertEquals("provider.refusedAddress",
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.store(context(), aValidConfiguration())).getMessage());
+      verify(sudo, times(2)).validateConfiguration(aValidConfiguration());
+      verify(settingService, never()).set(any(Context.class), any(Scope.class), anyString(), any(SettingValue.class));
+      verify(settingService, never()).remove(any(Context.class), any(Scope.class), anyString());
+   }
+
+   /** A refusal with no code is answered with the storage's own, so the screen always has one to show. */
+   @Test
+   void aProviderRefusalWithoutACodeIsAnInvalidValue() throws Exception {
+      doThrow(new ConnectorCredentialsException(null)).when(sudo).validateConfiguration(any());
+
+      assertEquals(SettingProviderConfigStorage.INVALID_VALUE,
+                   assertThrows(ConnectorCredentialsException.class,
+                                () -> storage.validate(context(), aValidConfiguration())).getMessage());
+   }
+
+   /** The descriptor checks come first: the provider is never asked about a key it did not declare. */
+   @Test
+   void theProviderIsAskedOnlyAfterTheDescriptorChecks() throws Exception {
+      assertThrows(ConnectorCredentialsException.class, () -> storage.validate(context(), Map.of("nosuchfield", "x")));
+
+      verify(sudo, never()).validateConfiguration(any());
+   }
+
+   /**
+    * A provider that does not implement the hook keeps its default, which accepts: the
+    * configuration is validated and stored on its descriptor alone. A real
+    * implementation rather than a mock, since a mock never runs a default method.
+    */
+   @Test
+   void theDefaultHookAccepts() throws Exception {
+      ConnectorCredentialsProvider withDefault = new ConnectorCredentialsProvider() {
+         @Override
+         public String getName() {
+            return "default-hook";
+         }
+
+         @Override
+         public Set<ConnectorCredentialsChannel> getSupportedChannels() {
+            return EnumSet.allOf(ConnectorCredentialsChannel.class);
+         }
+
+         @Override
+         public boolean requiresUserAction() {
+            return false;
+         }
+
+         @Override
+         public org.exoplatform.services.connector.credentials.ConnectorCredentials produce(ConnectorCredentialsContext context) {
+            return null;
+         }
+
+         @Override
+         public void invalidate(ConnectorCredentialsContext context) {
+            // nothing cached
+         }
+
+         @Override
+         public List<ConnectorCredentialsConfigField> getConfigurationFields() {
+            return List.of(new ConnectorCredentialsConfigField("apiUrl",
+                                                               ConnectorCredentialsConfigFieldType.TEXT,
+                                                               "label.apiUrl",
+                                                               null,
+                                                               true,
+                                                               List.of()));
+         }
+      };
+      credentialsService.register(withDefault);
+      ConnectorCredentialsContext defaultContext = new ConnectorCredentialsContext(2L,
+                                                                                   "default-hook",
+                                                                                   null,
+                                                                                   ConnectorCredentialsChannel.HTTP,
+                                                                                   "email");
+      Map<String, String> values = Map.of("apiUrl", "https://mail.example.org/some/path");
+
+      assertDoesNotThrow(() -> withDefault.validateConfiguration(values));
+      assertDoesNotThrow(() -> storage.validate(defaultContext, values));
+      storage.store(defaultContext, values);
+
+      assertEquals("https://mail.example.org/some/path", settingWritten("default-hook/email/2/apiUrl"));
    }
 }

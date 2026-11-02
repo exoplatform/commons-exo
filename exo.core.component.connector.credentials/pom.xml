@@ -86,14 +86,7 @@
          <artifactId>portal.component.web.security</artifactId>
          <scope>provided</scope>
       </dependency>
-      <!-- OrganizationService, to read the email of the user a provider impersonates.
-           Reached transitively today; declared because we call it directly. -->
-      <dependency>
-         <groupId>io.meeds.core</groupId>
-         <artifactId>exo.core.component.organization.api</artifactId>
-         <scope>provided</scope>
-      </dependency>
-      <!-- Jackson 2, which BluemindAuthClient and SettingManagedConnectorStorage call
+      <!-- Jackson 2, which SettingManagedConnectorStorage calls
            directly: declared because we call it, reached transitively through
            portal.component.api otherwise. Provided, and version-managed by the BOM. -->
       <dependency>
@@ -104,6 +97,13 @@
       <dependency>
          <groupId>io.meeds.kernel</groupId>
          <artifactId>exo.kernel.commons.test</artifactId>
+         <scope>test</scope>
+      </dependency>
+      <!-- The portal test core boots a portal container on an in-memory database: what
+           SettingProviderConfigStorageDatabaseTest needs to see a save not commit. -->
+      <dependency>
+         <groupId>io.meeds.portal</groupId>
+         <artifactId>portal.component.test.core</artifactId>
          <scope>test</scope>
       </dependency>
    </dependencies>

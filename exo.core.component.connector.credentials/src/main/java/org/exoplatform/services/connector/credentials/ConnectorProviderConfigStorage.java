@@ -22,9 +22,10 @@ import java.util.Set;
 /**
  * Where a provider's configuration lives, for one connector.
  * <p>
- * An interface, and not because a second implementation is expected: EXO-89646 decides
- * where the sudo provider's code lives, and the storage will follow it. Keeping the
- * contract separate lets that move happen without reopening a caller.
+ * An interface, and not because a second implementation is expected: a provider that
+ * needs a per-connector configuration lives in its own add-on (the BlueMind add-on's
+ * {@code bluemind-sudo}, EXO-90817) and reaches the storage only through this contract,
+ * so its implementation can change without reopening a provider or a caller.
  * <p>
  * Two reads, deliberately. A provider needs its secret in the clear to do its work; an
  * administration screen must never see it. In Java the method name is the only guard
@@ -51,7 +52,10 @@ public interface ConnectorProviderConfigStorage {
     *          unassigned, validation does not use it
     * @param values what was posted, keyed by descriptor field
     * @throws ConnectorCredentialsException carrying a message code when a key is unknown,
-    *           a required field empty, or a value outside a field's options
+    *           a required field empty, a value outside a field's options, or when the
+    *           provider's own
+    *           {@link ConnectorCredentialsProvider#validateConfiguration(Map)} refuses
+    *           the values
     */
    void validate(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException;
 
@@ -116,7 +120,10 @@ public interface ConnectorProviderConfigStorage {
    Set<String> readStoredSecretKeys(ConnectorCredentialsContext context);
 
    /**
-    * Removes a connector's configuration for the context's provider.
+    * Removes a connector's configuration for the context's provider: every value stored
+    * for that provider, connector kind and connector id, whether or not the provider is
+    * still registered. A connector whose provider's add-on was uninstalled is deleted
+    * or moved to another provider without leaving its secret behind.
     * <p>
     * Entitlement is the caller's, as for
     * {@link #store(ConnectorCredentialsContext, Map)}.

@@ -16,10 +16,12 @@
  */
 package org.exoplatform.services.connector.credentials.storage;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -95,6 +97,36 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
       // that does not exist yet nothing is stored, nothing is retained, and a blank
       // required secret is simply missing - which is the first-save case.
       check(fields, values, retainedFields(context, fields, values));
+      checkWithProvider(context, values);
+   }
+
+   /**
+    * The provider's own rule, after the descriptor checks: what its field descriptors
+    * cannot say (the shape of an address, say). Skipped when no registered provider has
+    * the context's name - the descriptor checks have then already refused any value.
+    * <p>
+    * A refusal keeps the provider's message code, which its own bundle translates; one
+    * with no code at all is answered as {@link #INVALID_VALUE}, so the screen always
+    * has a code to show.
+    *
+    * @param context the connector and provider the values are for
+    * @param values what was posted
+    * @throws ConnectorCredentialsException with the provider's message code
+    */
+   private void checkWithProvider(ConnectorCredentialsContext context,
+                                  Map<String, String> values) throws ConnectorCredentialsException {
+      Optional<ConnectorCredentialsProvider> provider = provider(context);
+      if (provider.isEmpty()) {
+         return;
+      }
+      try {
+         provider.get().validateConfiguration(Collections.unmodifiableMap(values));
+      } catch (ConnectorCredentialsException e) {
+         if (StringUtils.isBlank(e.getMessage())) {
+            throw new ConnectorCredentialsException(INVALID_VALUE, e);
+         }
+         throw e;
+      }
    }
 
    /**
@@ -183,16 +215,28 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * cannot post it back); on a required field with nothing stored it is the first
     * save, and missing; on an optional field it is an erasure, and the entry goes.
     * <p>
-    * Transactional because one configuration is several setting entries: a failure on
-    * the second field would otherwise leave a login stored against a secret that never
-    * was.
+    * Every check and every encryption happens before the first write, so a refusal or a
+    * codec failure writes nothing. The writes are all or nothing in the database: they
+    * run in one transaction ({@code @ContainerTransactional(atomic = true)}), which the
+    * settings store's own writes join, so a failure on any entry rolls back the ones
+    * written before it. A stored secret is never paired with free-text values it was not
+    * saved with. On the node that ran a save that rolled back, the settings cache may
+    * still return the new value of an entry written before the failure, until that entry
+    * leaves the cache: {@code CacheSettingServiceImpl.set} puts the value in the cache
+    * before it writes it to the database. The same ordering opens a window on a save that
+    * commits: a read of an entry on that node between its cache update and the commit can
+    * reload the row still committed, and the cache then serves that former value until the
+    * entry leaves it. The race is the settings cache's (it updates before the commit
+    * rather than after); the one transaction widens its window from one write to the
+    * whole configuration.
     */
    @Override
-   @ContainerTransactional
+   @ContainerTransactional(atomic = true)
    public void store(ConnectorCredentialsContext context, Map<String, String> values) throws ConnectorCredentialsException {
       List<ConnectorCredentialsConfigField> fields = describedFields(context);
       Set<String> retainedFields = retainedFields(context, fields, values);
       check(fields, values, retainedFields);
+      checkWithProvider(context, values);
       Map<String, String> retained = new LinkedHashMap<>();
       for (ConnectorCredentialsConfigField field : fields) {
          if (retainedFields.contains(field.getKey())) {
@@ -271,13 +315,21 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * @return the descriptors, empty when the provider declares none
     */
    private List<ConnectorCredentialsConfigField> describedFields(ConnectorCredentialsContext context) {
+      return provider(context).map(ConnectorCredentialsProvider::getConfigurationFields).orElseGet(List::of);
+   }
+
+   /**
+    * The registered provider the context names.
+    *
+    * @param context whose provider is looked up
+    * @return the provider, empty when none is registered under that name
+    */
+   private Optional<ConnectorCredentialsProvider> provider(ConnectorCredentialsContext context) {
       return connectorCredentialsService.getProviders()
                                         .stream()
                                         .filter(provider -> provider.getName()
                                                                     .equals(context.getConnectorCredentialsProviderName()))
-                                        .map(ConnectorCredentialsProvider::getConfigurationFields)
-                                        .findFirst()
-                                        .orElseGet(List::of);
+                                        .findFirst();
    }
 
    @Override
@@ -321,17 +373,43 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
    }
 
    /**
-    * Field by field rather than through the scope-wide remove: the scope holds every
-    * connector's configuration, and one connector's removal must not touch the others.
+    * Removes every key stored under the connector's {@code <provider>/<kind>/<id>/}
+    * prefix, whatever the fields, so it needs no registered provider: the provider's
+    * descriptor is not read. A connector whose provider is no longer installed (its
+    * add-on removed) still loses all of its configuration, its encrypted secret
+    * included, when it is deleted or moved to another provider.
     * <p>
-    * Transactional for the write's reason in reverse: a half-removed configuration
-    * leaves a technical secret behind that nobody administers any more.
+    * The scope is read once, then each key goes through
+    * {@code remove(Context, Scope, key)}, so the settings cache evicts it. Not the
+    * scope-wide remove: the scope holds every connector's configuration, and one
+    * connector's removal must not touch the others. The prefix ends with a slash, so
+    * connector 1 never takes connector 10's keys.
+    * <p>
+    * All or nothing in the database: the removals run in one transaction
+    * ({@code @ContainerTransactional(atomic = true)}), so a failure on any key keeps every
+    * key in place. Calling delete again removes them, since it reads the scope afresh.
+    * The settings cache evicts each key before its removal reaches the database, so a
+    * removal that rolled back is read again from the database. The same ordering opens a
+    * window on a delete that commits: a read of a key on that node between its eviction
+    * and the commit reloads the row still committed, and the cache then serves it, a
+    * removed connector's encrypted secret included, until the entry leaves the cache. The
+    * race is the settings cache's (it evicts before the commit rather than after); the one
+    * transaction widens its window from one removal to the whole configuration.
     */
    @Override
-   @ContainerTransactional
+   @ContainerTransactional(atomic = true)
    public void delete(ConnectorCredentialsContext context) {
-      for (ConnectorCredentialsConfigField field : describedFields(context)) {
-         settingService.remove(Context.GLOBAL, SCOPE, keyOf(context, field.getKey()));
+      String prefix = keyOf(context, "");
+      Map<String, SettingValue> stored = settingService.getSettingsByContextAndScope(Context.GLOBAL.getName(),
+                                                                                     Context.GLOBAL.getId(),
+                                                                                     SCOPE.getName(),
+                                                                                     SCOPE.getId());
+      if (stored == null) {
+         return;
+      }
+      List<String> keys = stored.keySet().stream().filter(key -> key != null && key.startsWith(prefix)).toList();
+      for (String key : keys) {
+         settingService.remove(Context.GLOBAL, SCOPE, key);
       }
    }
 
