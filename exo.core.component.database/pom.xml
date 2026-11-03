@@ -72,28 +72,12 @@
          <scope>test</scope>
       </dependency>
       <dependency>
-         <groupId>com.experlog</groupId>
-         <artifactId>xapool</artifactId>
-         <optional>true</optional>
-      </dependency>
-      <dependency>
-         <groupId>com.atomikos</groupId>
-         <artifactId>transactions-jta</artifactId>
-         <scope>provided</scope>
-         <exclusions>
-            <exclusion>
-               <groupId>org.mockito</groupId>
-               <artifactId>mockito-all</artifactId>
-            </exclusion>
-         </exclusions>
-      </dependency>
-      <dependency>
          <groupId>org.jboss.logging</groupId>
          <artifactId>jboss-logging</artifactId>
       </dependency>
       <dependency>
-        <groupId>javax.transaction</groupId>
-        <artifactId>javax.transaction-api</artifactId>
+        <groupId>jakarta.transaction</groupId>
+        <artifactId>jakarta.transaction-api</artifactId>
       </dependency>
       <dependency>
          <groupId>org.hibernate.orm</groupId>
