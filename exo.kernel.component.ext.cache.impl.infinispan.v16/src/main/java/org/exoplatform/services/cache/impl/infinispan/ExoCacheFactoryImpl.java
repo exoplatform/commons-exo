@@ -429,16 +429,13 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    }
 
    /**
-    * Stops every cache manager of the factory, so that each releases its channel, a fork of the channel the node shares
-    * in cluster mode.
+    * Stops every cache manager of the factory, the asynchronous and custom ones being mapped to their cluster names, so
+    * that each releases its channel, a fork of the channel the node shares in cluster mode.
     */
    @Override
    public void stop() {
      Set<DefaultCacheManager> cacheManagers = Collections.newSetFromMap(new IdentityHashMap<>());
      cacheManagers.add(cacheManager);
-     if (asyncCacheManager != null) {
-       cacheManagers.add(asyncCacheManager);
-     }
      cacheManagers.addAll(mappingGlobalConfigCacheManager.values());
      cacheManagers.forEach(DefaultCacheManager::stop);
    }
