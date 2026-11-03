@@ -33,7 +33,14 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -91,6 +98,12 @@ public class TestClusterAllowList
                                     new String[] {"a", "b"},
                                     new Date(1000),
                                     Instant.ofEpochSecond(1000),
+                                    LocalDate.of(2026, 11, 3),
+                                    LocalDateTime.of(2026, 11, 3, 12, 0),
+                                    ZonedDateTime.of(2026, 11, 3, 12, 0, 0, 0, ZoneId.of("Europe/Paris")),
+                                    Duration.ofSeconds(30),
+                                    ZoneOffset.ofHours(1),
+                                    URI.create("https://example.org/explorer"),
                                     Locale.FRANCE,
                                     UUID.randomUUID(),
                                     new ArrayList<>(List.of("a")),

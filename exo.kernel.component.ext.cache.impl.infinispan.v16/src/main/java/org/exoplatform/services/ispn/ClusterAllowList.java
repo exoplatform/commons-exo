@@ -186,7 +186,10 @@ public final class ClusterAllowList
                                                  "java.util.concurrent.locks.AbstractOwnableSynchronizer",
                                                  "java.util.concurrent.CopyOnWriteArrayList",
                                                  "java.util.concurrent.CopyOnWriteArraySet",
-                                                 // Values
+                                                 // Values: java.time.Ser resolves to the classes of java.time and
+                                                 // java.time.zone, which the filter checks as well
+                                                 "java.time.**",
+                                                 "java.net.URI",
                                                  "java.util.Locale",
                                                  "java.util.UUID");
 

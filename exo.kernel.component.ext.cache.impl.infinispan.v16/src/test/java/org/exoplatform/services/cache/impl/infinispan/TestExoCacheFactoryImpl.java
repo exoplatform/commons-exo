@@ -22,6 +22,9 @@ import junit.framework.TestCase;
 
 import java.lang.reflect.Field;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.container.configuration.ConfigurationManager;
@@ -109,6 +112,25 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.RUNNING, asyncCacheManager.getStatus());
       factory.stop();
       assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+   }
+
+   public void testMainCacheManagerStopsWhenTheAsyncOneFails() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      MBeanServer mbeanServer = container.getMBeanServer();
+      ObjectName cacheManagers = new ObjectName("*:type=CacheManager,name=\"template_portal\",component=CacheManager");
+      int registered = mbeanServer.queryNames(cacheManagers, null).size();
+      try
+      {
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class),
+                                 "jar:/conf/cache/infinispan/local/cache-config.xml", "jar:/conf/missing.xml",
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+         fail("The asynchronous template does not exist");
+      }
+      catch (ExoCacheInitException e)
+      {
+         assertEquals(registered, mbeanServer.queryNames(cacheManagers, null).size());
+      }
    }
 
    public void testExoCacheCreator()

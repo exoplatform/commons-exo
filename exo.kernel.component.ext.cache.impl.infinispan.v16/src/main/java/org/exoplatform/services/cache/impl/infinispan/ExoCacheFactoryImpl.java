@@ -158,7 +158,16 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
 
       // Started with the main one, not on the first asynchronous cache: in cluster mode, its channel is a fork of the
       // channel the node shares, whose oldest member coordinates the fork and must therefore have it
-      this.asyncCacheManager = cacheAsyncConfigTemplate == null ? null : initCacheManager(cacheAsyncConfigTemplate);
+      try
+      {
+         this.asyncCacheManager = cacheAsyncConfigTemplate == null ? null : initCacheManager(cacheAsyncConfigTemplate);
+      }
+      catch (ExoCacheInitException | RuntimeException e)
+      {
+         // No instance will be stopped: release the channel of the main one
+         cacheManager.stop();
+         throw e;
+      }
    }
 
    /**
