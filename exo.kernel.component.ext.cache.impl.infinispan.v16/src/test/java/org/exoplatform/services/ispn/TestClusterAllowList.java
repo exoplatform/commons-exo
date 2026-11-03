@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -55,6 +56,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -62,6 +64,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.infinispan.commons.configuration.ClassAllowList;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
@@ -97,6 +100,8 @@ public class TestClusterAllowList
                                     new int[] {3},
                                     new String[] {"a", "b"},
                                     new Date(1000),
+                                    // The creation date of a web notification
+                                    new GregorianCalendar(TimeZone.getTimeZone("Europe/Paris"), Locale.FRANCE),
                                     Instant.ofEpochSecond(1000),
                                     LocalDate.of(2026, 11, 3),
                                     LocalDateTime.of(2026, 11, 3, 12, 0),
@@ -124,6 +129,8 @@ public class TestClusterAllowList
                                     Collections.singletonMap("a", "b"),
                                     Collections.unmodifiableList(new ArrayList<>(List.of("a"))),
                                     Collections.synchronizedMap(new HashMap<>(map)),
+                                    // The parameter of the filter of web notifications, a key of their list cache
+                                    ImmutablePair.of("name", "value"),
                                     new PlatformValue("name", PlatformState.ACTIVE, List.of("a")));
       for (Object value : values)
       {

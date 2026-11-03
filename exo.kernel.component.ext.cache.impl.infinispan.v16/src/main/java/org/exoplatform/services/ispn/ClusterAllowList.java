@@ -191,7 +191,21 @@ public final class ClusterAllowList
                                                  "java.time.**",
                                                  "java.net.URI",
                                                  "java.util.Locale",
-                                                 "java.util.UUID");
+                                                 "java.util.UUID",
+                                                 "java.util.Calendar",
+                                                 "java.util.GregorianCalendar",
+                                                 // A calendar writes its time zone, and the rules of its last year
+                                                 "java.util.TimeZone",
+                                                 "java.util.SimpleTimeZone",
+                                                 "sun.util.calendar.ZoneInfo");
+
+   /**
+    * The third-party types that cached keys and values carry: the parameter of the filter of web notifications, a key
+    * of their list cache, and the payload of the token streams of the indexing changes of the JCR.
+    */
+   static final List<String> THIRD_PARTY_TYPES = List.of("org.apache.commons.lang3.tuple.Pair",
+                                                          "org.apache.commons.lang3.tuple.ImmutablePair",
+                                                          "org.apache.lucene.index.Payload");
 
    private static final Pattern ENTRY =
       Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*(\\.\\*\\*?)?");
@@ -213,6 +227,7 @@ public final class ClusterAllowList
       Set<String> allowed = new LinkedHashSet<>(ALWAYS_ALLOWED);
       allowed.addAll(PLATFORM_PACKAGES);
       allowed.addAll(JDK_TYPES);
+      allowed.addAll(THIRD_PARTY_TYPES);
       allowed.addAll(parse(property));
       this.entries = List.copyOf(allowed);
       List<String> patterns = new ArrayList<>();
