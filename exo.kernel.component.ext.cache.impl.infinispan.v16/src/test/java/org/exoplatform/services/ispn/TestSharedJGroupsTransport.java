@@ -21,12 +21,14 @@ package org.exoplatform.services.ispn;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -186,6 +188,37 @@ public class TestSharedJGroupsTransport
       assertNull(SharedJGroupsTransport.getSingletonName(stack));
       assertThrows(IllegalArgumentException.class, () -> SharedJGroupsTransport.createChannel(stack, "cluster", null));
       assertNotEquals(null, SharedJGroupsTransport.getSingletonName(stack(ports[0], ports)));
+   }
+
+   @Test
+   public void testChannelCreationSetsTheJGroupsFilter() throws Exception
+   {
+      int[] ports = freePorts(1);
+      ProtocolStackConfigurator stack = stack(ports[0], ports);
+      clearAllowList();
+
+      resources.add(SharedJGroupsTransport.createChannel(stack, "filtered", "node1"));
+      assertNotNull(System.getProperty(ClusterAllowList.JGROUPS_FILTER_PROPERTY));
+   }
+
+   @Test
+   public void testJGroupsConfigurationLoadSetsTheJGroupsFilter() throws Exception
+   {
+      clearAllowList();
+
+      loadJGroupsConfig("jar:/conf/jgroups/udp.xml");
+      assertNotNull(System.getProperty(ClusterAllowList.JGROUPS_FILTER_PROPERTY));
+   }
+
+   /**
+    * Forgets the list of this node and the filter it set, as before the first cache manager or channel of a node.
+    */
+   private static void clearAllowList() throws Exception
+   {
+      Field instance = ClusterAllowList.class.getDeclaredField("instance");
+      instance.setAccessible(true);
+      instance.set(null, null);
+      System.clearProperty(ClusterAllowList.JGROUPS_FILTER_PROPERTY);
    }
 
    private static TypedProperties loadJGroupsConfig(String configurationFile) throws Exception

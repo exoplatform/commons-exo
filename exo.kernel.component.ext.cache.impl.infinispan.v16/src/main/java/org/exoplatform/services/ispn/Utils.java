@@ -142,6 +142,15 @@ public class Utils
    public static boolean loadJGroupsConfig(ConfigurationManager cfm, GlobalConfiguration config,
       GlobalConfigurationBuilder configBuilder) throws ExoCacheInitException
    {
+      try
+      {
+         // JGroups reads its deserialization filter once, which the list sets
+         ClusterAllowList.getInstance();
+      }
+      catch (IllegalStateException e)
+      {
+         throw new ExoCacheInitException(e.getMessage(), e);
+      }
       Properties properties = config.transport().properties();
       if (properties == null || !properties.containsKey(JGroupsTransport.CONFIGURATION_FILE))
       {

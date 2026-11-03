@@ -124,6 +124,8 @@ public final class SharedJGroupsTransport
    public static synchronized JChannel createChannel(ProtocolStackConfigurator stack, String clusterName,
       String nodeName) throws Exception
    {
+      // JGroups reads its deserialization filter once, which the list sets
+      ClusterAllowList.getInstance();
       String singletonName = getSingletonName(stack);
       if (singletonName == null)
       {
