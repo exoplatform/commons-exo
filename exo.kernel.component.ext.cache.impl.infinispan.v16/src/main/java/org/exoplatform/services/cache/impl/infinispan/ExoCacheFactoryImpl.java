@@ -32,7 +32,6 @@ import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.infinispan.Cache;
 import org.infinispan.commons.dataconversion.MediaType;
-import org.infinispan.commons.jmx.MBeanServerLookup;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfiguration;
@@ -50,13 +49,8 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
-
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 
 /**
  * This class is the Infinispan implementation of the {@link org.exoplatform.services.cache.ExoCacheFactory}
@@ -130,14 +124,6 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
     */
    private final ExoCacheCreator defaultCreator = new GenericExoCacheCreator();
 
-   private static final MBeanServerLookup MBEAN_SERVER_LOOKUP = new MBeanServerLookup()
-   {
-      public MBeanServer getMBeanServer(Properties properties)
-      {
-         return ExoContainerContext.getTopContainer().getMBeanServer();
-      }
-   };
-
    public ExoCacheFactoryImpl(ExoContainerContext ctx, InitParams params, ConfigurationManager configManager)
       throws ExoCacheInitException
    {
@@ -178,6 +164,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    {
       ConfigurationBuilderHolder holder = parseConfiguration(cacheConfigTemplate);
       configureCacheManager(holder.getGlobalConfigurationBuilder(), cacheConfigTemplate);
+      Utils.configureJmx(holder.getGlobalConfigurationBuilder());
       DefaultCacheManager cacheManager;
       try
       {
@@ -245,44 +232,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
       // Configure JGroups
       configureJGroups(config, configBuilder);
       // Configure the name of the cache manager
-      String cacheManagerName = config.cacheManagerName() + "_" + ctx.getName();
-      configBuilder.cacheManagerName(cacheManagerName);
-      // Configure the MBeanServerLookup
-      configBuilder.jmx()
-                   .enabled(true)
-                   .domain(getFreeJmxDomain(config.jmx().domain(), cacheManagerName))
-                   .mBeanServerLookup(MBEAN_SERVER_LOOKUP);
-   }
-
-   /**
-    * Infinispan no longer lets two cache managers of the same name share a JMX domain: the second one takes the
-    * configured domain suffixed with the first free index, as the <code>duplicate-domains</code> attribute of the
-    * former templates did. A stopped cache manager leaves the beans of its internal caches registered, so a domain
-    * holding any bean of that name is not free.
-    */
-   private static String getFreeJmxDomain(String domain, String cacheManagerName)
-   {
-      MBeanServer mbeanServer = MBEAN_SERVER_LOOKUP.getMBeanServer(null);
-      String freeDomain = domain;
-      for (int i = 2; isCacheManagerRegistered(mbeanServer, freeDomain, cacheManagerName); i++)
-      {
-         freeDomain = domain + i;
-      }
-      return freeDomain;
-   }
-
-   private static boolean isCacheManagerRegistered(MBeanServer mbeanServer, String domain, String cacheManagerName)
-   {
-      try
-      {
-         String name = ObjectName.quote(cacheManagerName);
-         return !mbeanServer.queryNames(new ObjectName(domain + ":type=CacheManager,name=" + name + ",*"), null).isEmpty()
-            || !mbeanServer.queryNames(new ObjectName(domain + ":manager=" + name + ",*"), null).isEmpty();
-      }
-      catch (MalformedObjectNameException e)
-      {
-         return false;
-      }
+      configBuilder.cacheManagerName(config.cacheManagerName() + "_" + ctx.getName());
    }
 
    /**
@@ -349,7 +299,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             // Load the configuration
             ConfigurationBuilderHolder holder = parseConfiguration(customConfig);
             GlobalConfigurationBuilder configBuilder = holder.getGlobalConfigurationBuilder();
-            // Configure JGroups and JMX since it could affect the state of the Global Config
+            // Configure JGroups since it could affect the state of the Global Config
             configureCacheManager(configBuilder, customConfig);
             GlobalConfiguration gc = configBuilder.build();
 
@@ -360,6 +310,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             {
                // Use a different cache manager name to prevent naming conflict
                configBuilder.cacheManagerName(gc.cacheManagerName() + "_" + region + "_" + ctx.getName());
+               Utils.configureJmx(configBuilder);
                // No cache manager has been defined so far for this Cache Configuration
                currentCacheManager = new DefaultCacheManager(holder, true);
                // We register this new cache manager

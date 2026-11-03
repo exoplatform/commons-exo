@@ -18,9 +18,11 @@
  */
 package org.exoplatform.services.ispn;
 
+import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.configuration.ConfigurationManager;
 import org.exoplatform.container.util.TemplateConfigurationHelper;
 import org.exoplatform.services.cache.ExoCacheInitException;
+import org.infinispan.commons.jmx.MBeanServerLookup;
 import org.infinispan.configuration.global.AllowListConfiguration;
 import org.infinispan.configuration.global.GlobalConfiguration;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
@@ -31,6 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 /**
  * @author <a href="mailto:nfilotto@exoplatform.com">Nicolas Filotto</a>
  * @version $Id$
@@ -39,8 +45,59 @@ import java.util.Properties;
 public class Utils
 {
 
+   private static final MBeanServerLookup MBEAN_SERVER_LOOKUP = new MBeanServerLookup()
+   {
+      public MBeanServer getMBeanServer(Properties properties)
+      {
+         return ExoContainerContext.getTopContainer().getMBeanServer();
+      }
+   };
+
    private Utils()
    {
+   }
+
+   /**
+    * Registers the beans of a cache manager in the MBean server of the top container. Infinispan no longer lets two
+    * cache managers of the same name share a JMX domain: the cache manager takes the domain of its configuration or,
+    * when it is taken, that domain suffixed with the first free index, as the <code>duplicate-domains</code> attribute
+    * of the former configurations did. A stopped cache manager leaves the beans of its internal caches registered, so
+    * a domain holding any bean of that name is not free.
+    *
+    * @param configBuilder the global configuration of the cache manager, its name set
+    */
+   public static void configureJmx(GlobalConfigurationBuilder configBuilder)
+   {
+      GlobalConfiguration config = configBuilder.build();
+      configBuilder.jmx()
+                   .enabled(true)
+                   .domain(getFreeJmxDomain(config.jmx().domain(), config.cacheManagerName()))
+                   .mBeanServerLookup(MBEAN_SERVER_LOOKUP);
+   }
+
+   private static String getFreeJmxDomain(String domain, String cacheManagerName)
+   {
+      MBeanServer mbeanServer = MBEAN_SERVER_LOOKUP.getMBeanServer(null);
+      String freeDomain = domain;
+      for (int i = 2; isCacheManagerRegistered(mbeanServer, freeDomain, cacheManagerName); i++)
+      {
+         freeDomain = domain + i;
+      }
+      return freeDomain;
+   }
+
+   private static boolean isCacheManagerRegistered(MBeanServer mbeanServer, String domain, String cacheManagerName)
+   {
+      try
+      {
+         String name = ObjectName.quote(cacheManagerName);
+         return !mbeanServer.queryNames(new ObjectName(domain + ":type=CacheManager,name=" + name + ",*"), null).isEmpty()
+            || !mbeanServer.queryNames(new ObjectName(domain + ":manager=" + name + ",*"), null).isEmpty();
+      }
+      catch (MalformedObjectNameException e)
+      {
+         return false;
+      }
    }
 
    /**
