@@ -257,7 +257,8 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    /**
     * Infinispan no longer lets two cache managers of the same name share a JMX domain: the second one takes the
     * configured domain suffixed with the first free index, as the <code>duplicate-domains</code> attribute of the
-    * former templates did.
+    * former templates did. A stopped cache manager leaves the beans of its internal caches registered, so a domain
+    * holding any bean of that name is not free.
     */
    private static String getFreeJmxDomain(String domain, String cacheManagerName)
    {
@@ -274,8 +275,9 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    {
       try
       {
-         return mbeanServer.isRegistered(new ObjectName(domain + ":type=CacheManager,name="
-            + ObjectName.quote(cacheManagerName) + ",component=CacheManager"));
+         String name = ObjectName.quote(cacheManagerName);
+         return !mbeanServer.queryNames(new ObjectName(domain + ":type=CacheManager,name=" + name + ",*"), null).isEmpty()
+            || !mbeanServer.queryNames(new ObjectName(domain + ":manager=" + name + ",*"), null).isEmpty();
       }
       catch (MalformedObjectNameException e)
       {

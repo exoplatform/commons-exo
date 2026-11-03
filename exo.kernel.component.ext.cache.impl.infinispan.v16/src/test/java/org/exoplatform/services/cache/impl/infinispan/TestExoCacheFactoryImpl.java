@@ -117,13 +117,21 @@ public class TestExoCacheFactoryImpl extends TestCase
    public void testMainCacheManagerStopsWhenTheAsyncOneFails() throws Exception
    {
       PortalContainer container = PortalContainer.getInstance();
-      MBeanServer mbeanServer = container.getMBeanServer();
+      // The server the factory registers its cache managers in
+      MBeanServer mbeanServer = ExoContainerContext.getTopContainer().getMBeanServer();
       ObjectName cacheManagers = new ObjectName("*:type=CacheManager,name=\"template_portal\",component=CacheManager");
       int registered = mbeanServer.queryNames(cacheManagers, null).size();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, null,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      assertEquals(registered + 1, mbeanServer.queryNames(cacheManagers, null).size());
+      factory.stop();
+      assertEquals(registered, mbeanServer.queryNames(cacheManagers, null).size());
       try
       {
          new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class),
-                                 "jar:/conf/cache/infinispan/local/cache-config.xml", "jar:/conf/missing.xml",
+                                 template, "jar:/conf/missing.xml",
                                  container.getComponentInstanceOfType(ConfigurationManager.class));
          fail("The asynchronous template does not exist");
       }
