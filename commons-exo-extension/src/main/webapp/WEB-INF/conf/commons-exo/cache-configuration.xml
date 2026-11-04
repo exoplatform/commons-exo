@@ -747,7 +747,7 @@
         <object-param>
           <name>portal.DescriptionLocales</name>
           <description>The Cache configuration for the description locales by site</description>
-          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
             <field name="name">
               <string>portal.DescriptionLocales</string>
             </field>
