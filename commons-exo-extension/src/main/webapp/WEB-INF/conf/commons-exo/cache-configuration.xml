@@ -1303,7 +1303,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1328,7 +1328,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1353,7 +1353,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1379,7 +1379,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
