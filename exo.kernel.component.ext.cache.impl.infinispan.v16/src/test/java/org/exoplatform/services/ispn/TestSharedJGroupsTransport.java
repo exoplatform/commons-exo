@@ -268,7 +268,7 @@ public class TestSharedJGroupsTransport
       return new BytesMessage(target.getAddress(), "ping".getBytes(StandardCharsets.UTF_8));
    }
 
-   private static void waitForMembers(Cache<?, ?> cache, int members) throws InterruptedException
+   static void waitForMembers(Cache<?, ?> cache, int members) throws InterruptedException
    {
       for (int i = 0; i < 100 && cache.getAdvancedCache().getDistributionManager().getCacheTopology().getMembers()
                                        .size() < members; i++)
@@ -291,7 +291,7 @@ public class TestSharedJGroupsTransport
     * The shipped TCP stack, its variables resolved for a node bound to the given port and finding its peers on the
     * others.
     */
-   private static ProtocolStackConfigurator stack(int port, int[] ports) throws IOException
+   static ProtocolStackConfigurator stack(int port, int[] ports) throws IOException
    {
       return SharedJGroupsTransport.parse(stackXml(port, ports));
    }
@@ -314,7 +314,7 @@ public class TestSharedJGroupsTransport
       }
    }
 
-   private static int[] freePorts(int count) throws IOException
+   static int[] freePorts(int count) throws IOException
    {
       int[] ports = new int[count];
       List<ServerSocket> sockets = new ArrayList<>();
