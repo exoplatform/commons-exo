@@ -27,7 +27,7 @@
     <template v-if="opened" #content>
       <div class="mx-5 mt-5">
         <div class="text-subtitle mb-6">
-          {{ $t('managedConnector.drawer.description') }}
+          {{ $t('managedConnector.drawer.summary') }}
         </div>
         <!--
           The empty state is a sentence and a way out, never a disabled switch in
@@ -121,7 +121,7 @@
           A checkbox that looked like any other would be read like any other.
         -->
         <div v-if="selectedCandidate" class="text-subtitle mb-3">
-          {{ $t('managedConnector.drawer.consequence', {0: selectedCandidate.name}) }}
+          {{ $t('managedConnector.drawer.outcome', {0: selectedCandidate.name}) }}
         </div>
         <div class="d-flex">
           <v-spacer />
