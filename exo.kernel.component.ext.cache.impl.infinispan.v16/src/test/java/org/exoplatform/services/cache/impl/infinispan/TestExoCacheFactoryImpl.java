@@ -21,6 +21,7 @@ package org.exoplatform.services.cache.impl.infinispan;
 import junit.framework.TestCase;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -28,6 +29,8 @@ import javax.management.ObjectName;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.container.configuration.ConfigurationManager;
+import org.exoplatform.container.xml.InitParams;
+import org.exoplatform.container.xml.ValueParam;
 import org.exoplatform.services.cache.CacheService;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.cache.ExoCacheConfig;
@@ -112,6 +115,35 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.RUNNING, asyncCacheManager.getStatus());
       factory.stop();
       assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+   }
+
+   public void testCustomCacheManagersStartAndStopWithTheFactory() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, null,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      ValueParam config = new ValueParam();
+      config.setName("eagerCustomCache");
+      config.setValue("jar:/conf/portal/custom-cache-configuration-template.xml");
+      InitParams params = new InitParams();
+      params.addParameter(config);
+      factory.addConfig(new ExoCacheFactoryConfigPlugin(params));
+      Field field = ExoCacheFactoryImpl.class.getDeclaredField("mappingGlobalConfigCacheManager");
+      field.setAccessible(true);
+      Map<String, DefaultCacheManager> cacheManagers = (Map<String, DefaultCacheManager>)field.get(factory);
+
+      factory.start();
+      DefaultCacheManager customCacheManager = cacheManagers.values()
+                                                            .stream()
+                                                            .filter(manager -> manager.getName()
+                                                                                      .contains("_eagerCustomCache_"))
+                                                            .findFirst()
+                                                            .orElseThrow();
+      assertEquals(ComponentStatus.RUNNING, customCacheManager.getStatus());
+      factory.stop();
+      assertEquals(ComponentStatus.TERMINATED, customCacheManager.getStatus());
    }
 
    public void testMainCacheManagerStopsWhenTheAsyncOneFails() throws Exception

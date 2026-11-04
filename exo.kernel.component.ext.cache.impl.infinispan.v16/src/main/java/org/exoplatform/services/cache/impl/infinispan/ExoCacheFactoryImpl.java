@@ -296,27 +296,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             // A custom configuration has been set
             if (LOG.isInfoEnabled())
                LOG.info("A custom configuration has been set for the cache '" + region + "'.");
-            // Load the configuration
-            ConfigurationBuilderHolder holder = parseConfiguration(customConfig);
-            GlobalConfigurationBuilder configBuilder = holder.getGlobalConfigurationBuilder();
-            // Configure JGroups since it could affect the state of the Global Config
-            configureCacheManager(configBuilder, customConfig);
-            GlobalConfiguration gc = configBuilder.build();
-
-            // Check if a CacheManager with the same GlobalConfiguration exists
-            DefaultCacheManager currentCacheManager =
-                mappingGlobalConfigCacheManager.get(gc.transport().clusterName());
-            if (currentCacheManager == null)
-            {
-               // Use a different cache manager name to prevent naming conflict
-               configBuilder.cacheManagerName(gc.cacheManagerName() + "_" + region + "_" + ctx.getName());
-               Utils.configureJmx(configBuilder);
-               // No cache manager has been defined so far for this Cache Configuration
-               currentCacheManager = new DefaultCacheManager(holder, true);
-               // We register this new cache manager
-               mappingGlobalConfigCacheManager.put(gc.transport().clusterName(), currentCacheManager);
-            }
-            cacheManager = currentCacheManager;
+            cacheManager = getCustomCacheManager(region, customConfig);
             confBuilder.read(cacheManager.getDefaultCacheConfiguration());
          }
          else
@@ -354,6 +334,34 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    }
 
    /**
+    * Gives the cache manager of a custom configuration, created on its first region: the regions of the
+    * configurations of the same cluster name share it.
+    */
+   private DefaultCacheManager getCustomCacheManager(String region, String customConfig) throws ExoCacheInitException
+   {
+      // Load the configuration
+      ConfigurationBuilderHolder holder = parseConfiguration(customConfig);
+      GlobalConfigurationBuilder configBuilder = holder.getGlobalConfigurationBuilder();
+      // Configure JGroups since it could affect the state of the Global Config
+      configureCacheManager(configBuilder, customConfig);
+      GlobalConfiguration gc = configBuilder.build();
+
+      // Check if a CacheManager with the same GlobalConfiguration exists
+      DefaultCacheManager currentCacheManager = mappingGlobalConfigCacheManager.get(gc.transport().clusterName());
+      if (currentCacheManager == null)
+      {
+         // Use a different cache manager name to prevent naming conflict
+         configBuilder.cacheManagerName(gc.cacheManagerName() + "_" + region + "_" + ctx.getName());
+         Utils.configureJmx(configBuilder);
+         // No cache manager has been defined so far for this Cache Configuration
+         currentCacheManager = new DefaultCacheManager(holder, true);
+         // We register this new cache manager
+         mappingGlobalConfigCacheManager.put(gc.transport().clusterName(), currentCacheManager);
+      }
+      return currentCacheManager;
+   }
+
+   /**
     * Add a list of creators to register
     * @param plugin the plugin that contains the creators
     */
@@ -385,9 +393,26 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
       mappingCacheNameConfig.putAll(configs);
    }
 
+   /**
+    * Starts the cache managers of the custom configurations, as the asynchronous one starts with the factory: in
+    * cluster mode, the channel of such a manager is a fork of the channel the node shares, whose oldest member
+    * coordinates the fork and must therefore have it. A configuration that fails here fails again when one of its
+    * caches is created.
+    */
    @Override
    public void start() {
-     // Nothing to start
+     for (Map.Entry<String, String> config : mappingCacheNameConfig.entrySet())
+     {
+       try
+       {
+         getCustomCacheManager(config.getKey(), config.getValue());
+       }
+       catch (ExoCacheInitException | RuntimeException e)
+       {
+         LOG.error("The cache manager of the custom configuration of the cache '{}' could not be started",
+                   config.getKey(), e);
+       }
+     }
    }
 
    /**
