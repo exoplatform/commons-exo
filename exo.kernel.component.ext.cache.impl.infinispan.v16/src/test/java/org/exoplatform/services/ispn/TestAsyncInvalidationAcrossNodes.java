@@ -35,7 +35,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.exoplatform.services.cache.ExoCache;
+import org.exoplatform.services.cache.ClusterCachedObjectSelector;
 import org.exoplatform.services.cache.ExoCacheConfig;
+import org.exoplatform.services.cache.ObjectCacheInfo;
 import org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheCreator.GenericExoCache;
 import org.exoplatform.services.cache.invalidation.AsyncInvalidationExoCache;
 
@@ -48,6 +50,8 @@ public class TestAsyncInvalidationAcrossNodes
    private static final String PROPERTY_PREFIX = "exo.service.cluster.jgroups.";
 
    private static final String KEY = "key";
+
+   private static final String OTHER = "other";
 
    private static DefaultCacheManager node1;
 
@@ -93,6 +97,7 @@ public class TestAsyncInvalidationAcrossNodes
    {
       writer.removeLocal(KEY);
       reader.removeLocal(KEY);
+      reader.removeLocal(OTHER);
    }
 
    @Test
@@ -115,6 +120,19 @@ public class TestAsyncInvalidationAcrossNodes
       writer.remove(KEY);
 
       assertEvicted(KEY);
+   }
+
+   @Test
+   public void testSelectionOnANodeEvictsTheSelectedEntriesTheOtherLoaded() throws Exception
+   {
+      reader.putLocal(KEY, "former");
+      reader.putLocal(OTHER, "kept");
+
+      // The selector reaches the other node serialized, through the allow-list of the cluster
+      writer.select(new KeySelector(KEY));
+
+      assertEvicted(KEY);
+      assertEquals("kept", reader.get(OTHER));
    }
 
    private static void assertEvicted(String key) throws InterruptedException
@@ -157,5 +175,29 @@ public class TestAsyncInvalidationAcrossNodes
             .maxCount(100)
             .whenFull(EvictionStrategy.REMOVE);
       return new DefaultCacheManager(holder, true);
+   }
+
+   private static class KeySelector extends ClusterCachedObjectSelector<String, String>
+   {
+      private static final long serialVersionUID = 1L;
+
+      private final String key;
+
+      private KeySelector(String key)
+      {
+         this.key = key;
+      }
+
+      @Override
+      protected Object[] criteria()
+      {
+         return new Object[] {key};
+      }
+
+      @Override
+      public boolean select(String cachedKey, ObjectCacheInfo<? extends String> ocinfo)
+      {
+         return key.equals(cachedKey);
+      }
    }
 }
