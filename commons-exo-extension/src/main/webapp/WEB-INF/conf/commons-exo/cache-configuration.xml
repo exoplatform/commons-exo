@@ -25,6 +25,10 @@
   xsi:schemaLocation="http://www.exoplatform.org/xml/ns/kernel_1_2.xsd http://www.exoplatform.org/xml/ns/kernel_1_2.xsd"
   xmlns="http://www.exoplatform.org/xml/ns/kernel_1_2.xsd">
 
+  <!-- In a cluster, a cache of the data a shared store holds (database, IDM, JCR, search index) is invalidated:
+       each node loads its own entries, and only the keys of what changes travel. Replication is kept for the
+       state no store holds, which the other nodes could not load: who is online, who co-edits. -->
+
   <component>
     <key>org.infinispan.commons.tx.lookup.TransactionManagerLookup</key>
     <type>org.exoplatform.services.transaction.infinispan.JBossStandaloneJTAManagerLookup</type>
@@ -156,7 +160,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -182,7 +186,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationsCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -208,7 +212,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -238,7 +242,7 @@
             </field>
           </object>
         </object-param>
-        <!-- UserStateService -->
+        <!-- UserStateService: who is online is state no store holds, which the other nodes could not load: replicated -->
         <object-param>
           <name>commons.UserStateService</name>
           <description>The Cache configuration for the UserStateService</description>
@@ -342,7 +346,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.wiki.PageRenderingCache.cacheMode:replication}</string>
+              <string>${exo.cache.wiki.PageRenderingCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -367,7 +371,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.wiki.PageAttachmentCache.cacheMode:replication}</string>
+              <string>${exo.cache.wiki.PageAttachmentCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -430,7 +434,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.user.cacheMode:replication}</string>
+              <string>${exo.cache.portal.user.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -455,7 +459,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.profile.cacheMode:replication}</string>
+              <string>${exo.cache.portal.profile.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -506,7 +510,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.role.cacheMode:replication}</string>
+              <string>${exo.cache.portal.role.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -634,7 +638,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.SettingService:replication}</string>
+              <string>${exo.cache.commons.SettingService:asyncInvalidation}</string>
             </field>
             <field
               name="strategy"
@@ -912,7 +916,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -937,7 +941,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentityIndexCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentityIndexCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -962,7 +966,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ProfileCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ProfileCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1039,7 +1043,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1064,7 +1068,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipFromIdentityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipFromIdentityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1191,7 +1195,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivitiesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivitiesCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1216,7 +1220,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivitiesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivitiesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1243,7 +1247,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpaceCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpaceCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1268,7 +1272,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpaceRefCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpaceRefCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
