@@ -480,7 +480,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.membership.cacheMode:replication}</string>
+              <string>${exo.cache.portal.membership.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -532,7 +532,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.group.cacheMode:replication}</string>
+              <string>${exo.cache.portal.group.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -987,7 +987,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentitiesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentitiesCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1012,7 +1012,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentitiesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentitiesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1089,7 +1089,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipsCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipsCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1114,7 +1114,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipsCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1139,7 +1139,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SuggestionsCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SuggestionsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1166,7 +1166,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1293,7 +1293,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpacesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpacesCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1318,7 +1318,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpacesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpacesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
