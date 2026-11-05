@@ -70,6 +70,7 @@ import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.configuration.parsing.ParserRegistry;
 import org.junit.Test;
+import org.springframework.cache.interceptor.SimpleKey;
 
 import org.exoplatform.services.cache.ExoCacheInitException;
 
@@ -131,6 +132,9 @@ public class TestClusterAllowList
                                     Collections.synchronizedMap(new HashMap<>(map)),
                                     // The parameter of the filter of web notifications, a key of their list cache
                                     ImmutablePair.of("name", "value"),
+                                    // The key of a Spring cache of a method with several arguments, or none
+                                    new SimpleKey("name", 1L),
+                                    SimpleKey.EMPTY,
                                     new PlatformValue("name", PlatformState.ACTIVE, List.of("a")));
       for (Object value : values)
       {
@@ -186,6 +190,8 @@ public class TestClusterAllowList
       // A value holding one is refused as well
       assertThrows(InvalidClassException.class,
                    () -> marshaller.objectToByteBuffer(new ArrayList<>(List.of(new Vector<>(List.of("a"))))));
+      assertThrows(InvalidClassException.class,
+                   () -> marshaller.objectToByteBuffer(new SimpleKey("name", new Vector<>(List.of("a")))));
    }
 
    @Test

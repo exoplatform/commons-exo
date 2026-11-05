@@ -81,6 +81,12 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- The key of a Spring cache, which the allow-list lets through -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <scope>test</scope>
+    </dependency>
     </dependencies>
 	<build>
 		<plugins>

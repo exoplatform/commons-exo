@@ -201,11 +201,13 @@ public final class ClusterAllowList
 
    /**
     * The third-party types that cached keys and values carry: the parameter of the filter of web notifications, a key
-    * of their list cache, and the payload of the token streams of the indexing changes of the JCR.
+    * of their list cache, the payload of the token streams of the indexing changes of the JCR, and the key Spring
+    * builds from the arguments of a cached method, which an eviction sends.
     */
    static final List<String> THIRD_PARTY_TYPES = List.of("org.apache.commons.lang3.tuple.Pair",
                                                           "org.apache.commons.lang3.tuple.ImmutablePair",
-                                                          "org.apache.lucene.index.Payload");
+                                                          "org.apache.lucene.index.Payload",
+                                                          "org.springframework.cache.interceptor.SimpleKey");
 
    private static final Pattern ENTRY =
       Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*(\\.\\*\\*?)?");
