@@ -21,8 +21,14 @@ package org.exoplatform.services.ispn;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+import java.awt.Point;
+import java.io.Serializable;
 
 import org.infinispan.Cache;
+import org.infinispan.commons.marshall.MarshallingException;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.context.Flag;
@@ -110,6 +116,9 @@ public class TestAsyncInvalidationAcrossNodes
       writer.removeLocal(KEY);
       reader.removeLocal(KEY);
       reader.removeLocal(OTHER);
+      // A remove leaves its hash in the replicated cache of every node: each test starts without it
+      node1.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
+      node2.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
    }
 
    @Test
@@ -164,6 +173,39 @@ public class TestAsyncInvalidationAcrossNodes
 
       assertEvicted(KEY);
       assertEquals("kept", reader.get(OTHER));
+   }
+
+   @Test
+   public void testASecondRemoveEvictsTheEntryTheOtherNodeLoadedAgain() throws Exception
+   {
+      writer.remove(KEY);
+      Cache<Object, Object> replicated = node2.getCache(INVALIDATED);
+      for (int i = 0; i < 100 && !replicated.containsKey(KEY); i++)
+      {
+         Thread.sleep(100);
+      }
+      // Every remove puts the same hash: the other node already holds the one this remove puts
+      reader.putLocal(KEY, "former");
+      assertEquals("former", reader.get(KEY));
+
+      writer.remove(KEY);
+
+      assertEvicted(KEY);
+   }
+
+   @Test
+   public void testARemoveOfAKeyOffTheAllowListFailsAfterTheLocalRemoval()
+   {
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      AsyncInvalidationExoCache<Serializable, String> offList = (AsyncInvalidationExoCache) writer;
+      Serializable key = new Point(1, 2);
+      offList.putLocal(key, "former");
+
+      // The caller learns that the other nodes keep the entry, and the message names the property to set
+      MarshallingException refusal = assertThrows(MarshallingException.class, () -> offList.remove(key));
+
+      assertTrue(refusal.getMessage(), refusal.getMessage().contains(ClusterAllowList.ALLOW_LIST_PROPERTY));
+      assertNull(offList.get(key));
    }
 
    @Test
