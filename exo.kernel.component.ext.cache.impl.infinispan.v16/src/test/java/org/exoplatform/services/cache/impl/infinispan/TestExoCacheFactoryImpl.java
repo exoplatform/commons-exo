@@ -18,6 +18,8 @@
  */
 package org.exoplatform.services.cache.impl.infinispan;
 
+import static org.junit.Assert.assertThrows;
+
 import junit.framework.TestCase;
 
 import java.lang.reflect.Field;
@@ -188,6 +190,37 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.RUNNING, customCacheManager.getStatus());
       factory.stop();
       assertEquals(ComponentStatus.TERMINATED, customCacheManager.getStatus());
+   }
+
+   public void testACustomConfigurationThatCannotStartFailsTheCreationOfItsCachesOnly() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, null,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      ValueParam config = new ValueParam();
+      config.setName("missingCustomCache");
+      config.setValue("jar:/conf/portal/missing-custom-cache-configuration.xml");
+      InitParams params = new InitParams();
+      params.addParameter(config);
+      factory.addConfig(new ExoCacheFactoryConfigPlugin(params));
+      try
+      {
+         // Logged: the other caches of the node start
+         factory.start();
+
+         ExoCacheConfig missing = new ExoCacheConfig();
+         missing.setName("missingCustomCache");
+         assertThrows(ExoCacheInitException.class, () -> factory.createCache(missing));
+         ExoCacheConfig other = new ExoCacheConfig();
+         other.setName("otherCache");
+         assertNotNull(factory.createCache(other));
+      }
+      finally
+      {
+         factory.stop();
+      }
    }
 
    public void testMainCacheManagerStopsWhenTheAsyncOneFails() throws Exception
