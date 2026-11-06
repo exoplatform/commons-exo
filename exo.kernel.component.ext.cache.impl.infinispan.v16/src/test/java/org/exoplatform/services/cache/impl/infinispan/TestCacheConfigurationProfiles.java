@@ -100,21 +100,41 @@ public class TestCacheConfigurationProfiles
       }
    }
 
+   @Test
+   public void testTheIdeSpringCacheIsSizedByItsPropertiesOnly() throws Exception
+   {
+      assertEquals(Map.of(), getProperties("IdeSpringCacheProperties", Set.of()));
+      assertEquals(Map.of("meeds.cache.ide.widget.max", "2000", "meeds.cache.ide.widget.ttl", "-1"),
+                   getProperties("IdeSpringCacheProperties", Set.of("ide")));
+      // A declaration would be replaced in a cluster by the configuration the properties build
+      try (Stream<Path> paths = Files.walk(CONFIGURATION))
+      {
+         for (Path file : paths.filter(path -> path.getFileName().toString().startsWith("cache-configuration")).toList())
+         {
+            assertFalse(file.toString(), Files.readString(file).contains("<name>ide.widget</name>"));
+         }
+      }
+   }
+
    private static Map<String, String> getSpringCacheModes(Set<String> profiles) throws Exception
    {
+      return getProperties("ClusterSpringCacheProperties", profiles);
+   }
+
+   private static Map<String, String> getProperties(String key, Set<String> profiles) throws Exception
+   {
       Component component = new ConfigurationUnmarshaller(profiles).unmarshall(EXTENSION_CONFIGURATION.toUri().toURL())
-                                                                   .getComponent("ClusterSpringCacheProperties");
-      Map<String, String> modes = new HashMap<>();
+                                                                   .getComponent(key);
+      Map<String, String> values = new HashMap<>();
       if (component != null)
       {
-         Iterator<Property> properties =
-            component.getInitParams().getPropertiesParam("ClusterSpringCacheProperties").getPropertyIterator();
+         Iterator<Property> properties = component.getInitParams().getPropertiesParam(key).getPropertyIterator();
          while (properties.hasNext())
          {
             Property property = properties.next();
-            modes.put(property.getName(), Deserializer.resolveString(property.getValue()));
+            values.put(property.getName(), Deserializer.resolveString(property.getValue()));
          }
       }
-      return modes;
+      return values;
    }
 }

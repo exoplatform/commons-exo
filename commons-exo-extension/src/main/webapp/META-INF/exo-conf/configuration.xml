@@ -41,6 +41,20 @@
     </init-params>
   </component>
 
+  <!-- The size and lifetime of the Spring caches of the IDE, in every mode: a Spring cache is sized by its
+       meeds.cache.<name>.max and meeds.cache.<name>.ttl properties, never by a declaration, which a cluster replaces -->
+  <component profiles="ide">
+    <key>IdeSpringCacheProperties</key>
+    <type>org.exoplatform.container.ExtendedPropertyConfigurator</type>
+    <init-params>
+      <properties-param>
+        <name>IdeSpringCacheProperties</name>
+        <property name="meeds.cache.ide.widget.max" value="${meeds.cache.ide.widget.max:2000}" />
+        <property name="meeds.cache.ide.widget.ttl" value="${meeds.cache.ide.widget.ttl:-1}" />
+      </properties-param>
+    </init-params>
+  </component>
+
   <external-component-plugins>
     <target-component>org.exoplatform.container.definition.PortalContainerConfig</target-component>
     <component-plugin>
