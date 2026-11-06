@@ -19,10 +19,7 @@
 package org.exoplatform.services.ispn;
 
 import java.io.IOException;
-import java.io.InvalidClassException;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -137,70 +134,5 @@ public class ClusterJavaSerializationMarshaller extends JavaSerializationMarshal
          objectOutput.writeObject(o);
       }
       return output;
-   }
-
-   /**
-    * Checks the descriptor of each class written, its serializable superclasses included.
-    */
-   private static final class AllowListObjectOutputStream extends ObjectOutputStream
-   {
-      private final ClassAllowList            allowList;
-
-      private final UnaryOperator<Throwable> replacement;
-
-      private boolean                         refused;
-
-      private AllowListObjectOutputStream(OutputStream output,
-                                          ClassAllowList allowList,
-                                          UnaryOperator<Throwable> replacement) throws IOException
-      {
-         super(output);
-         this.allowList = allowList;
-         this.replacement = replacement;
-         enableReplaceObject(replacement != null);
-      }
-
-      /**
-       * After a refusal, the stream writes the exception it throws, which is then not checked, so that the exception
-       * names the refused class.
-       */
-      @Override
-      protected void annotateClass(Class<?> type) throws IOException
-      {
-         if (!refused && !allowList.isSafeClass(type.getName()))
-         {
-            refused = true;
-            warnRefusal(type.getName());
-            throw new InvalidClassException(type.getName(), "not on the cluster serialization allow-list: add it to the '"
-               + ClusterAllowList.ALLOW_LIST_PROPERTY + "' property of every node");
-         }
-      }
-
-      @Override
-      protected Object replaceObject(Object obj)
-      {
-         if (obj instanceof Throwable throwable)
-         {
-            String refusedClass = getRefusedClass(throwable.getClass());
-            if (refusedClass != null)
-            {
-               warnRefusal(refusedClass);
-               return replacement.apply(throwable);
-            }
-         }
-         return obj;
-      }
-
-      private String getRefusedClass(Class<?> type)
-      {
-         for (Class<?> c = type; c != null && Serializable.class.isAssignableFrom(c); c = c.getSuperclass())
-         {
-            if (!allowList.isSafeClass(c.getName()))
-            {
-               return c.getName();
-            }
-         }
-         return null;
-      }
    }
 }

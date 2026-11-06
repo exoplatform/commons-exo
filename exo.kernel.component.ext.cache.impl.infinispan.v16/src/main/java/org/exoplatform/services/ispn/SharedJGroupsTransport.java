@@ -20,25 +20,15 @@ package org.exoplatform.services.ispn;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
-import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.NodeVersion;
-import org.jgroups.EmptyMessage;
 import org.jgroups.JChannel;
-import org.jgroups.Message;
-import org.jgroups.blocks.RequestCorrelator;
-import org.jgroups.conf.ClassConfigurator;
 import org.jgroups.conf.ProtocolConfiguration;
 import org.jgroups.conf.ProtocolStackConfigurator;
 import org.jgroups.conf.XmlConfigurator;
-import org.jgroups.fork.ForkChannel;
-import org.jgroups.fork.UnknownForkHandler;
-import org.jgroups.protocols.FORK;
-import org.jgroups.stack.AddressGenerator;
 
 import org.exoplatform.commons.utils.PropertyManager;
 
@@ -64,6 +54,12 @@ public final class SharedJGroupsTransport
     * partitions on the same network never share a main channel.
     */
    public static final String PARTITION_NAME = "exo.cluster.partition.name";
+
+   /**
+    * Guards the main channels: one is opened, joined and closed while it is held. A thread waiting to open a channel
+    * can be interrupted, which a monitor would not allow, so that a stop does not wait for a start blocked in its join.
+    */
+   static final ReentrantLock LOCK = new ReentrantLock();
 
    private static final Map<String, MainChannel> MAIN_CHANNELS = new HashMap<>();
 
@@ -119,10 +115,11 @@ public final class SharedJGroupsTransport
     * @param clusterName the cluster the channel joins, which identifies its fork
     * @param nodeName the name of the node, given to the main channel; <code>null</code> to let JGroups generate one
     * @return the channel
+    * @throws InterruptedException if the thread is interrupted while another one opens or closes a main channel
     * @throws Exception if the main channel cannot be created or connected
     */
-   public static synchronized JChannel createChannel(ProtocolStackConfigurator stack, String clusterName,
-      String nodeName) throws Exception
+   public static JChannel createChannel(ProtocolStackConfigurator stack, String clusterName, String nodeName)
+      throws Exception
    {
       // JGroups reads its deserialization filter once, which the list sets
       ClusterAllowList.getInstance();
@@ -133,13 +130,33 @@ public final class SharedJGroupsTransport
       }
       String mainClusterName = getMainClusterName(singletonName);
       String key = mainClusterName + '\n' + stack.getProtocolStackString();
-      MainChannel main = MAIN_CHANNELS.get(key);
-      if (main == null)
+      LOCK.lockInterruptibly();
+      try
       {
-         main = new MainChannel(key, stack, singletonName, mainClusterName, nodeName);
-         MAIN_CHANNELS.put(key, main);
+         MainChannel main = MAIN_CHANNELS.get(key);
+         if (main == null)
+         {
+            main = new MainChannel(key, stack, singletonName, mainClusterName, nodeName);
+            MAIN_CHANNELS.put(key, main);
+         }
+         try
+         {
+            return main.fork(clusterName);
+         }
+         catch (Exception e) //NOSONAR
+         {
+            if (!main.hasForks())
+            {
+               MAIN_CHANNELS.remove(key);
+               main.close();
+            }
+            throw e;
+         }
       }
-      return main.fork(clusterName);
+      finally
+      {
+         LOCK.unlock();
+      }
    }
 
    static String getMainClusterName(String singletonName)
@@ -148,235 +165,37 @@ public final class SharedJGroupsTransport
       return partition == null || partition.isBlank() ? singletonName : partition + "-" + singletonName;
    }
 
-   static synchronized int getMainChannelCount()
+   static int getMainChannelCount()
    {
-      return MAIN_CHANNELS.size();
-   }
-
-   private static synchronized void release(MainChannel main)
-   {
-      if (--main.forks == 0)
+      LOCK.lock();
+      try
       {
-         MAIN_CHANNELS.remove(main.key);
-         main.channel.close();
+         return MAIN_CHANNELS.size();
       }
-   }
-
-   private static final class MainChannel
-   {
-      private final String key;
-
-      private final String forkStackId;
-
-      private final JChannel channel;
-
-      private int forks;
-
-      private MainChannel(String key, ProtocolStackConfigurator stack, String singletonName, String clusterName,
-         String nodeName) throws Exception
+      finally
       {
-         this.key = key;
-         this.forkStackId = singletonName;
-         this.channel = new JChannel(new MainStack(stack));
-         try
-         {
-            FORK fork = channel.getProtocolStack().findProtocol(FORK.class);
-            fork.setUnknownForkHandler(new UnknownForkResponder(channel));
-            channel.addAddressGenerator(new InfinispanAddressGenerator());
-            if (nodeName != null && !nodeName.isEmpty())
-            {
-               channel.setName(nodeName);
-            }
-            channel.connect(clusterName);
-         }
-         catch (Exception e) //NOSONAR
-         {
-            channel.close();
-            throw e;
-         }
-      }
-
-      private JChannel fork(String clusterName) throws Exception
-      {
-         JChannel fork;
-         try
-         {
-            fork = new SharedForkChannel(this, clusterName);
-         }
-         catch (Exception e) //NOSONAR
-         {
-            if (forks == 0)
-            {
-               MAIN_CHANNELS.remove(key);
-               channel.close();
-            }
-            throw e;
-         }
-         forks++;
-         return fork;
+         LOCK.unlock();
       }
    }
 
    /**
-    * The stack of a main channel: the shared stack without the singleton name JGroups 5 no longer knows, with FORK on
-    * top unless the stack already has it.
+    * Releases a fork of a main channel, which closes with its last fork. A release is never interrupted, so that the
+    * count of the forks stays exact.
     */
-   private static final class MainStack implements ProtocolStackConfigurator
+   static void release(MainChannel main)
    {
-      private final List<ProtocolConfiguration> protocols = new ArrayList<>();
-
-      private MainStack(ProtocolStackConfigurator stack)
+      LOCK.lock();
+      try
       {
-         boolean hasFork = false;
-         for (ProtocolConfiguration protocol : stack.getProtocolStack())
+         if (main.releaseFork())
          {
-            Map<String, String> properties = new HashMap<>(protocol.getProperties());
-            properties.remove(SINGLETON_NAME);
-            protocols.add(new ProtocolConfiguration(protocol.getProtocolName(), properties));
-            hasFork |= isFork(protocol.getProtocolName());
-         }
-         if (!hasFork)
-         {
-            protocols.add(new ProtocolConfiguration(FORK.class.getSimpleName(), new HashMap<>()));
+            MAIN_CHANNELS.remove(main.getKey());
+            main.close();
          }
       }
-
-      private static boolean isFork(String protocolName)
+      finally
       {
-         return FORK.class.getSimpleName().equals(protocolName) || FORK.class.getName().equals(protocolName);
-      }
-
-      @Override
-      public String getProtocolStackString()
-      {
-         return protocols.toString();
-      }
-
-      @Override
-      public List<ProtocolConfiguration> getProtocolStack()
-      {
-         return protocols;
-      }
-   }
-
-   private static final class SharedForkChannel extends ForkChannel
-   {
-      private final MainChannel main;
-
-      private boolean released;
-
-      private SharedForkChannel(MainChannel main, String forkChannelId) throws Exception
-      {
-         super(main.channel, main.forkStackId, forkChannelId);
-         this.main = main;
-      }
-
-      /**
-       * The main channel carries the node name.
-       */
-      @Override
-      public ForkChannel setName(String name)
-      {
-         return this;
-      }
-
-      /**
-       * The main channel carries the node name.
-       */
-      @Override
-      public JChannel name(String name)
-      {
-         return this;
-      }
-
-      /**
-       * The main channel generates the addresses its forks share, as Infinispan's transport does.
-       */
-      @Override
-      public ForkChannel addAddressGenerator(AddressGenerator generator)
-      {
-         return this;
-      }
-
-      @Override
-      public void close()
-      {
-         try
-         {
-            super.close();
-         }
-         finally
-         {
-            synchronized (this)
-            {
-               if (!released)
-               {
-                  released = true;
-                  release(main);
-               }
-            }
-         }
-      }
-   }
-
-   /**
-    * Generates addresses as Infinispan's transport does, which reads the node version from them.
-    */
-   private static final class InfinispanAddressGenerator implements AddressGenerator
-   {
-      @Override
-      public org.jgroups.Address generateAddress()
-      {
-         return generateAddress(null);
-      }
-
-      @Override
-      public org.jgroups.Address generateAddress(String name)
-      {
-         return Address.randomUUID(name, NodeVersion.INSTANCE, null, null, null);
-      }
-   }
-
-   /**
-    * Answers a request sent to a fork this member does not have with an empty response, which Infinispan reads as a
-    * cache that is not running here.
-    */
-   private static final class UnknownForkResponder implements UnknownForkHandler
-   {
-      private static final short CORRELATOR_HEADER_ID = ClassConfigurator.getProtocolId(RequestCorrelator.class);
-
-      private final JChannel channel;
-
-      private UnknownForkResponder(JChannel channel)
-      {
-         this.channel = channel;
-      }
-
-      @Override
-      public Object handleUnknownForkStack(Message message, String forkStackId)
-      {
-         return respond(message);
-      }
-
-      @Override
-      public Object handleUnknownForkChannel(Message message, String forkChannelId)
-      {
-         return respond(message);
-      }
-
-      private Object respond(Message message)
-      {
-         RequestCorrelator.Header header = message.getHeader(CORRELATOR_HEADER_ID);
-         if (header != null && header.type == RequestCorrelator.Header.REQ && header.rspExpected())
-         {
-            Message response = new EmptyMessage(message.getSrc()).setFlag(message.getFlags(), false)
-               .clearFlag(Message.Flag.RSVP);
-            response.putHeader(FORK.ID, message.getHeader(FORK.ID));
-            response.putHeader(CORRELATOR_HEADER_ID,
-               new RequestCorrelator.Header(RequestCorrelator.Header.RSP, header.req_id, header.corrId));
-            channel.down(response);
-         }
-         return null;
+         LOCK.unlock();
       }
    }
 }

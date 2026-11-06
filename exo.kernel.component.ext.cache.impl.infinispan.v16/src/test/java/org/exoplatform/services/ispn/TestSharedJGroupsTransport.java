@@ -34,6 +34,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.util.TypedProperties;
@@ -80,6 +83,39 @@ public class TestSharedJGroupsTransport
             System.clearProperty(name);
          }
       }
+   }
+
+   @Test
+   public void testAThreadWaitingToOpenAChannelCanBeInterrupted() throws Exception
+   {
+      int[] ports = freePorts(1);
+      ProtocolStackConfigurator stack = stack(ports[0], ports);
+      int mainChannels = SharedJGroupsTransport.getMainChannelCount();
+      FutureTask<JChannel> creation =
+         new FutureTask<>(() -> SharedJGroupsTransport.createChannel(stack, "interrupted", "node1"));
+      Thread thread = new Thread(creation);
+
+      // Another thread opens or closes a main channel meanwhile
+      SharedJGroupsTransport.LOCK.lock();
+      try
+      {
+         thread.start();
+         for (int i = 0; i < 100 && !SharedJGroupsTransport.LOCK.hasQueuedThread(thread); i++)
+         {
+            Thread.sleep(50);
+         }
+         assertTrue(SharedJGroupsTransport.LOCK.hasQueuedThread(thread));
+         thread.interrupt();
+
+         ExecutionException failure = assertThrows(ExecutionException.class, () -> creation.get(10, TimeUnit.SECONDS));
+         assertTrue(String.valueOf(failure.getCause()), failure.getCause() instanceof InterruptedException);
+      }
+      finally
+      {
+         SharedJGroupsTransport.LOCK.unlock();
+      }
+      thread.join(TimeUnit.SECONDS.toMillis(10));
+      assertEquals(mainChannels, SharedJGroupsTransport.getMainChannelCount());
    }
 
    @Test
