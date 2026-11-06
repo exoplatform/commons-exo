@@ -30,13 +30,17 @@ import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.container.configuration.ConfigurationManager;
 import org.exoplatform.container.xml.InitParams;
+import org.exoplatform.container.xml.ObjectParameter;
 import org.exoplatform.container.xml.ValueParam;
 import org.exoplatform.services.cache.CacheService;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.cache.ExoCacheConfig;
+import org.exoplatform.services.cache.ExoCacheConfigPlugin;
 import org.exoplatform.services.cache.ExoCacheFactory;
 import org.exoplatform.services.cache.ExoCacheInitException;
+import org.exoplatform.services.cache.impl.CacheServiceImpl;
 import org.exoplatform.services.cache.impl.infinispan.TestExoCacheCreator.TestExoCache;
+import org.exoplatform.services.cache.invalidation.AsyncInvalidationExoCache;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.lifecycle.ComponentStatus;
 import org.infinispan.manager.DefaultCacheManager;
@@ -115,6 +119,46 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.RUNNING, asyncCacheManager.getStatus());
       factory.stop();
       assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+   }
+
+   public void testACacheConfiguredByItsModeOnlyIsInvalidatedOverAnAsyncReplicatedCache() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class),
+                                 "jar:/conf/portal/cache-configuration-template.xml",
+                                 "jar:/conf/portal/cache-async-configuration-template.xml",
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      try
+      {
+         CacheServiceImpl cacheService = new CacheServiceImpl(new InitParams(), factory);
+         // What the Spring cache manager adapter declares for a cache in cluster mode: no type, no implementation
+         ExoCacheConfig config = new ExoCacheConfig();
+         config.setName("springCache");
+         config.setCacheMode(org.exoplatform.services.cache.CacheMode.ASYNCINVALIDATION);
+         config.setMaxSize(300);
+         config.setLiveTime(600);
+         ObjectParameter parameter = new ObjectParameter();
+         parameter.setName(config.getName());
+         parameter.setObject(config);
+         InitParams params = new InitParams();
+         params.addParameter(parameter);
+         cacheService.addExoCacheConfig(new ExoCacheConfigPlugin(params));
+
+         ExoCache<?, ?> cache = cacheService.getCacheInstance("springCache");
+
+         assertTrue(cache.getClass().getName(), cache instanceof AsyncInvalidationExoCache);
+         Field field = AsyncInvalidationExoCache.class.getDeclaredField("replicatedCache");
+         field.setAccessible(true);
+         AbstractExoCache<?, ?> replicated = (AbstractExoCache<?, ?>)field.get(cache);
+         assertEquals(CacheMode.REPL_ASYNC, replicated.cache.getCacheConfiguration().clustering().cacheMode());
+         assertEquals(300, cache.getMaxSize());
+         assertEquals(600, cache.getLiveTime());
+      }
+      finally
+      {
+         factory.stop();
+      }
    }
 
    public void testCustomCacheManagersStartAndStopWithTheFactory() throws Exception
