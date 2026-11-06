@@ -19,10 +19,14 @@
 package org.exoplatform.services.ispn;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.context.Flag;
+import org.infinispan.distribution.ch.impl.HashFunctionPartitioner;
 import org.infinispan.eviction.EvictionStrategy;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
@@ -53,6 +57,13 @@ public class TestAsyncInvalidationAcrossNodes
 
    private static final String OTHER = "other";
 
+   private static final String INVALIDATED = "invalidated";
+
+   /**
+    * A cache whose nodes place a key in different segments
+    */
+   private static final String SKEWED = "skewed";
+
    private static DefaultCacheManager node1;
 
    private static DefaultCacheManager node2;
@@ -65,11 +76,12 @@ public class TestAsyncInvalidationAcrossNodes
    public static void startNodes() throws Exception
    {
       int[] ports = TestSharedJGroupsTransport.freePorts(2);
-      node1 = startNode(TestSharedJGroupsTransport.stack(ports[0], ports), "node1");
-      node2 = startNode(TestSharedJGroupsTransport.stack(ports[1], ports), "node2");
-      writer = invalidated(node1);
-      reader = invalidated(node2);
-      TestSharedJGroupsTransport.waitForMembers(node1.getCache("invalidated"), 2);
+      node1 = startNode(TestSharedJGroupsTransport.stack(ports[0], ports), "node1", false);
+      node2 = startNode(TestSharedJGroupsTransport.stack(ports[1], ports), "node2", true);
+      writer = invalidated(node1, INVALIDATED);
+      reader = invalidated(node2, INVALIDATED);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(INVALIDATED), 2);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(SKEWED), 2);
    }
 
    @AfterClass
@@ -154,28 +166,59 @@ public class TestAsyncInvalidationAcrossNodes
       assertEquals("kept", reader.get(OTHER));
    }
 
-   private static void assertEvicted(String key) throws InterruptedException
+   @Test
+   public void testAKeyTheNodesPlaceInDifferentSegmentsIsInvalidatedBothWays() throws Exception
    {
-      // The invalidation reaches the other node asynchronously
-      for (int i = 0; i < 100 && reader.get(key) != null; i++)
+      AsyncInvalidationExoCache<String, String> skewedWriter = invalidated(node1, SKEWED);
+      AsyncInvalidationExoCache<String, String> skewedReader = invalidated(node2, SKEWED);
+      Cache<Object, Object> replicated = node2.getCache(SKEWED);
+      skewedWriter.remove(KEY);
+      for (int i = 0; i < 100 && replicated.getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).isEmpty(); i++)
       {
          Thread.sleep(100);
       }
-      assertNull(reader.get(key));
+      // The other node holds the key in the segment of the node that wrote it, where its own lookup never goes, as
+      // when a key's hash differs from JVM to JVM: an enum's hash is its identity hash
+      assertEquals(1, replicated.getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).size());
+      assertFalse(replicated.containsKey(KEY));
+
+      skewedReader.putLocal(KEY, "former");
+      skewedWriter.remove(KEY);
+      assertEvicted(skewedReader, KEY);
+
+      skewedWriter.putLocal(KEY, "former");
+      skewedReader.remove(KEY);
+      assertEvicted(skewedWriter, KEY);
+   }
+
+   private static void assertEvicted(String key) throws InterruptedException
+   {
+      assertEvicted(reader, key);
+   }
+
+   private static void assertEvicted(AsyncInvalidationExoCache<String, String> cache, String key) throws InterruptedException
+   {
+      // The invalidation reaches the other node asynchronously
+      for (int i = 0; i < 100 && cache.get(key) != null; i++)
+      {
+         Thread.sleep(100);
+      }
+      assertNull(cache.get(key));
    }
 
    @SuppressWarnings({"unchecked", "rawtypes"})
-   private static AsyncInvalidationExoCache<String, String> invalidated(DefaultCacheManager node)
+   private static AsyncInvalidationExoCache<String, String> invalidated(DefaultCacheManager node, String name)
    {
       ExoCacheConfig config = new ExoCacheConfig();
-      config.setName("invalidated");
+      config.setName(name);
       config.setMaxSize(100);
       config.setLiveTime(-1);
-      Cache cache = node.getCache("invalidated");
+      Cache cache = node.getCache(name);
       return new AsyncInvalidationExoCache<>((ExoCache) new GenericExoCache(config, cache));
    }
 
-   private static DefaultCacheManager startNode(ProtocolStackConfigurator stack, String nodeName) throws Exception
+   private static DefaultCacheManager startNode(ProtocolStackConfigurator stack, String nodeName, boolean skewed)
+      throws Exception
    {
       ConfigurationBuilderHolder holder = new ConfigurationBuilderHolder();
       GlobalConfigurationBuilder global = holder.getGlobalConfigurationBuilder();
@@ -186,14 +229,33 @@ public class TestAsyncInvalidationAcrossNodes
             .nodeName(nodeName)
             .addProperty(JGroupsTransport.CHANNEL_CONFIGURATOR, new SharedJGroupsChannelConfigurator(stack, nodeName));
       Utils.configureSerialization(global, "test");
-      // Bounded as GenericExoCacheCreator bounds it: the local cache takes its size from the replicated one
-      holder.newConfigurationBuilder("invalidated")
-            .clustering()
-            .cacheMode(CacheMode.REPL_ASYNC)
-            .memory()
-            .maxCount(100)
-            .whenFull(EvictionStrategy.REMOVE);
+      replicatedAsync(holder.newConfigurationBuilder(INVALIDATED));
+      // Unbounded, as a cache whose size is not positive: each segment holds its entries in a map of its own
+      ConfigurationBuilder skewedCache = holder.newConfigurationBuilder(SKEWED);
+      skewedCache.clustering().cacheMode(CacheMode.REPL_ASYNC);
+      if (skewed)
+      {
+         skewedCache.clustering().hash().keyPartitioner(new ShiftedPartitioner());
+      }
       return new DefaultCacheManager(holder, true);
+   }
+
+   private static void replicatedAsync(ConfigurationBuilder cache)
+   {
+      // Bounded as GenericExoCacheCreator bounds it: the local cache takes its size from the replicated one
+      cache.clustering().cacheMode(CacheMode.REPL_ASYNC).memory().maxCount(100).whenFull(EvictionStrategy.REMOVE);
+   }
+
+   /**
+    * Places every key one segment further than the default partitioner, as a JVM that hashes the key differently does.
+    */
+   public static class ShiftedPartitioner extends HashFunctionPartitioner
+   {
+      @Override
+      public int getSegment(Object key)
+      {
+         return (super.getSegment(key) + 1) % numSegments;
+      }
    }
 
    private static class KeySelector extends ClusterCachedObjectSelector<String, String>
