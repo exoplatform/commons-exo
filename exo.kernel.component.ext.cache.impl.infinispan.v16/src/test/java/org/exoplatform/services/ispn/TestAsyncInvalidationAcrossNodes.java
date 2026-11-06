@@ -123,6 +123,25 @@ public class TestAsyncInvalidationAcrossNodes
    }
 
    @Test
+   public void testRemoveAgainEvictsTheEntryOfANodeThatEvictedTheKey() throws Exception
+   {
+      writer.remove(KEY);
+      Cache<Object, Object> replicated = node2.getCache("invalidated");
+      for (int i = 0; i < 100 && !replicated.containsKey(KEY); i++)
+      {
+         Thread.sleep(100);
+      }
+      reader.putLocal(KEY, "former");
+      // A bounded replicated cache evicts its keys node by node, whatever the local cache holds
+      replicated.evict(KEY);
+      assertEquals("former", reader.get(KEY));
+
+      writer.remove(KEY);
+
+      assertEvicted(KEY);
+   }
+
+   @Test
    public void testSelectionOnANodeEvictsTheSelectedEntriesTheOtherLoaded() throws Exception
    {
       reader.putLocal(KEY, "former");
