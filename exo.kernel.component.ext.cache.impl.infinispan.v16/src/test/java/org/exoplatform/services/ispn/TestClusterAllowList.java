@@ -64,6 +64,8 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import javax.naming.NamingException;
+
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.infinispan.commons.configuration.ClassAllowList;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
@@ -363,6 +365,31 @@ public class TestClusterAllowList
       {
          return Objects.hash(name, state, values);
       }
+   }
+
+   @Test
+   public void testAThrowableOffTheListTravelsAsItsReplacementAndTheChainKeepsItsTypes() throws Exception
+   {
+      assertFalse(allowList.getInfinispanAllowList().isSafeClass(NamingException.class.getName()));
+      PlatformException failure = new PlatformException("outer", new NamingException("inner"));
+
+      Object received = marshaller.objectFromByteBuffer(marshaller.objectToByteBuffer(failure,
+         refused -> new PlatformException("described " + refused.getMessage(), null)));
+
+      assertTrue(received instanceof PlatformException);
+      assertEquals("outer", ((Throwable)received).getMessage());
+      assertTrue(((Throwable)received).getCause() instanceof PlatformException);
+      assertEquals("described inner", ((Throwable)received).getCause().getMessage());
+      assertThrows(InvalidClassException.class, () -> marshaller.objectToByteBuffer(failure));
+   }
+
+   @Test
+   public void testARefusalIsWarnedOnce()
+   {
+      String refusal = "org.example.Refused" + System.nanoTime();
+
+      assertTrue(ClusterJavaSerializationMarshaller.warnRefusal(refusal));
+      assertFalse(ClusterJavaSerializationMarshaller.warnRefusal(refusal));
    }
 
    static final class PlatformException extends Exception
