@@ -1552,7 +1552,7 @@
             </field>
           </object>
         </object-param>
-        <!-- Caches with no declaration until now: their size and lifetime are the ones they ran with; data read from a shared store is invalidated across the nodes. A Spring cache takes its mode from the cluster properties of META-INF/exo-conf/configuration.xml instead -->
+        <!-- Caches the code creates by name, sized with the values of the kernel's default configuration (300 entries, 600 seconds), which the exo.cache.default.* properties do not change here; data read from a shared store is invalidated across the nodes. A Spring cache takes its mode from the cluster properties of META-INF/exo-conf/configuration.xml instead -->
         <object-param>
           <name>commons.WebNotificationCountByPluginCache</name>
           <description>The Cache configuration for commons.WebNotificationCountByPluginCache</description>

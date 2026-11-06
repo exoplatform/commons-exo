@@ -38,8 +38,8 @@ import org.exoplatform.services.log.Log;
 /**
  * The classes a node deserializes from the cluster, one list for every path an object arrives by: JGroups' own
  * deserialization, through the {@value #JGROUPS_FILTER_PROPERTY} system property set before any channel is created;
- * the RPC services, through {@link #getFilter()}; and the cache marshaller ({@link ClusterJavaSerializationMarshaller}),
- * through {@link #getInfinispanAllowList()}, which also checks what it writes.
+ * and the cache marshaller ({@link ClusterJavaSerializationMarshaller}), through {@link #getInfinispanAllowList()},
+ * which also checks what it writes. The RPC services marshal their commands and replies with that marshaller.
  * <p>
  * In order: Infinispan's built-in denials, the classes Infinispan always accepts, the platform's packages, the JDK
  * types that cached values and exceptions carry with their serializable superclasses, the entries of the
@@ -292,7 +292,8 @@ public final class ClusterAllowList
    }
 
    /**
-    * @return a filter applying the list
+    * @return a filter applying the list to a plain {@link java.io.ObjectInputStream}: no cluster path reads with one,
+    *         the tests check the list through it
     */
    public ObjectInputFilter getFilter()
    {
