@@ -56,8 +56,9 @@ public final class SharedJGroupsTransport
    public static final String PARTITION_NAME = "exo.cluster.partition.name";
 
    /**
-    * Guards the main channels: one is opened, joined and closed while it is held. A thread waiting to open a channel
-    * can be interrupted, which a monitor would not allow, so that a stop does not wait for a start blocked in its join.
+    * Guards the main channels: one is opened, joined and closed while it is held, and a join can last seconds. A thread
+    * waiting to open a channel can be interrupted, which a monitor would not allow; a release always waits, so that the
+    * count of the forks stays exact.
     */
    static final ReentrantLock LOCK = new ReentrantLock();
 
