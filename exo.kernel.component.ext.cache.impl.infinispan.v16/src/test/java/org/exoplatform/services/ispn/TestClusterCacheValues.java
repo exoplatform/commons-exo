@@ -68,6 +68,7 @@ import org.jgroups.conf.ProtocolStackConfigurator;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.springframework.cache.interceptor.SimpleKey;
 
 import io.meeds.cluster.MeedsValue;
 
@@ -171,6 +172,21 @@ public class TestClusterCacheValues
          Object copy = replicate(value);
          assertTrue(value.getClass().getName(), Arrays.deepEquals(new Object[] {value}, new Object[] {copy}));
          assertEquals(value.getClass(), copy.getClass());
+      }
+   }
+
+   @Test
+   public void testASpringCacheKeyFindsItsEntryOnTheOtherNode()
+   {
+      // The keys a Spring cache builds from the arguments of a method, each built again by the reading node
+      Map<SimpleKey, SimpleKey> rebuiltKeys = Map.of(new SimpleKey("name", 1L), new SimpleKey("name", 1L),
+                                                     SimpleKey.EMPTY, new SimpleKey());
+      for (Map.Entry<SimpleKey, SimpleKey> keys : rebuiltKeys.entrySet())
+      {
+         cache1.put(keys.getKey(), "value");
+         assertEquals(keys.getKey().toString(), "value", cache2.get(keys.getValue()));
+         cache2.remove(keys.getValue());
+         assertNull(keys.getKey().toString(), cache1.get(keys.getKey()));
       }
    }
 
