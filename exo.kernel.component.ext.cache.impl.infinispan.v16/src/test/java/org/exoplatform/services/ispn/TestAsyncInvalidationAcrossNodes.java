@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.awt.Point;
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.marshall.MarshallingException;
@@ -44,6 +45,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.exoplatform.services.cache.CacheListener;
+import org.exoplatform.services.cache.CacheListenerContext;
 import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.cache.ClusterCachedObjectSelector;
 import org.exoplatform.services.cache.ExoCacheConfig;
@@ -64,6 +67,16 @@ public class TestAsyncInvalidationAcrossNodes
    private static final String OTHER = "other";
 
    private static final String INVALIDATED = "invalidated";
+
+   /**
+    * A cache whose writer has a listener that clears the cache of its lists on every put
+    */
+   private static final String LISTENED = "listened";
+
+   /**
+    * The cache of the lists of the entries of {@link #LISTENED}
+    */
+   private static final String LISTS = "lists";
 
    /**
     * A cache whose nodes place a key in different segments
@@ -238,6 +251,44 @@ public class TestAsyncInvalidationAcrossNodes
       assertEvicted(reader, key);
    }
 
+   @Test
+   public void testLoadsSendNoClearAndEachWriteSendsOne() throws Exception
+   {
+      ClearsSent clears = new ClearsSent(node1, LISTS);
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      AsyncInvalidationExoCache<String, String> lists = new AsyncInvalidationExoCache<>((ExoCache) clears);
+      AsyncInvalidationExoCache<String, String> otherLists = invalidated(node2, LISTS);
+      AsyncInvalidationExoCache<String, String> entries = invalidated(node1, LISTENED);
+      invalidated(node2, LISTENED);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(LISTS), 2);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(LISTENED), 2);
+      // A listener that clears the lists on every put of an entry and ignores a load, as social's activity cache does
+      entries.addCacheListener(new ClearOnPut(lists));
+      otherLists.putLocal(KEY, "kept");
+
+      for (int i = 0; i < 50; i++)
+      {
+         entries.putLocal(KEY + i, "loaded");
+      }
+      assertEquals("kept", otherLists.get(KEY));
+      // Each write clears the lists, whichever node owns the segment of its key and applies it first
+      for (int i = 0; i < 20; i++)
+      {
+         entries.put(OTHER + i, "written");
+      }
+
+      assertEvicted(otherLists, KEY);
+      // The replicated cache of an asynchronous invalidation writes asynchronously, and a write comes back to its node
+      // when the other node owns the segment of its key
+      Cache<Object, Object> replicated = node1.getCache(LISTENED);
+      for (int i = 0; i < 100 && replicated.size() < 20; i++)
+      {
+         Thread.sleep(100);
+      }
+      Thread.sleep(500);
+      assertEquals("The writes send one clear each, the loads none", 20, clears.sent.get());
+   }
+
    private static void assertEvicted(AsyncInvalidationExoCache<String, String> cache, String key) throws InterruptedException
    {
       // The invalidation reaches the other node asynchronously
@@ -251,12 +302,17 @@ public class TestAsyncInvalidationAcrossNodes
    @SuppressWarnings({"unchecked", "rawtypes"})
    private static AsyncInvalidationExoCache<String, String> invalidated(DefaultCacheManager node, String name)
    {
+      Cache cache = node.getCache(name);
+      return new AsyncInvalidationExoCache<>((ExoCache) new GenericExoCache(config(name), cache));
+   }
+
+   private static ExoCacheConfig config(String name)
+   {
       ExoCacheConfig config = new ExoCacheConfig();
       config.setName(name);
       config.setMaxSize(100);
       config.setLiveTime(-1);
-      Cache cache = node.getCache(name);
-      return new AsyncInvalidationExoCache<>((ExoCache) new GenericExoCache(config, cache));
+      return config;
    }
 
    private static DefaultCacheManager startNode(ProtocolStackConfigurator stack, String nodeName, boolean skewed)
@@ -272,6 +328,8 @@ public class TestAsyncInvalidationAcrossNodes
             .addProperty(JGroupsTransport.CHANNEL_CONFIGURATOR, new SharedJGroupsChannelConfigurator(stack, nodeName));
       Utils.configureSerialization(global, "test");
       replicatedAsync(holder.newConfigurationBuilder(INVALIDATED));
+      replicatedAsync(holder.newConfigurationBuilder(LISTENED));
+      replicatedAsync(holder.newConfigurationBuilder(LISTS));
       // Unbounded, as a cache whose size is not positive: each segment holds its entries in a map of its own
       ConfigurationBuilder skewedCache = holder.newConfigurationBuilder(SKEWED);
       skewedCache.clustering().cacheMode(CacheMode.REPL_ASYNC);
@@ -321,6 +379,77 @@ public class TestAsyncInvalidationAcrossNodes
       public boolean select(String cachedKey, ObjectCacheInfo<? extends String> ocinfo)
       {
          return key.equals(cachedKey);
+      }
+   }
+
+   private static class ClearOnPut implements CacheListener<String, String>
+   {
+      private final ExoCache<String, String> cache;
+
+      private ClearOnPut(ExoCache<String, String> cache)
+      {
+         this.cache = cache;
+      }
+
+      @Override
+      public void onPut(CacheListenerContext context, String key, String obj)
+      {
+         cache.clearCache();
+      }
+
+      @Override
+      public void onPutLocal(CacheListenerContext context, String key, String obj)
+      {
+         // A load changes nothing to clear
+      }
+
+      @Override
+      public void onExpire(CacheListenerContext context, String key, String obj)
+      {
+         // Not observed
+      }
+
+      @Override
+      public void onRemove(CacheListenerContext context, String key, String obj)
+      {
+         // Not observed
+      }
+
+      @Override
+      public void onGet(CacheListenerContext context, String key, String obj)
+      {
+         // Not observed
+      }
+
+      @Override
+      public void onClearCache(CacheListenerContext context)
+      {
+         // Not observed
+      }
+   }
+
+   /**
+    * The replicated cache of a node, which counts the clears its node sends: the puts of their marker, a kernel enum the
+    * invalidation package keeps to itself
+    */
+   private static class ClearsSent extends GenericExoCache
+   {
+      private final AtomicInteger sent = new AtomicInteger();
+
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      private ClearsSent(DefaultCacheManager node, String name)
+      {
+         super(config(name), (Cache) node.getCache(name));
+      }
+
+      @Override
+      public void put(Serializable key, Object value)
+      {
+         if ("org.exoplatform.services.cache.invalidation.ClearMarker".equals(key.getClass().getName()))
+         {
+            sent.incrementAndGet();
+         }
+         super.put(key, value);
       }
    }
 }
