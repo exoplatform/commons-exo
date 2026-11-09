@@ -28,6 +28,11 @@
   <packaging>war</packaging>
   <name>Commons Exo Extension</name>
 
+  <properties>
+    <!-- The module's only class bootstraps its Spring context on the platform; its tests check its configuration files -->
+    <exo.test.coverage.ratio>0.0</exo.test.coverage.ratio>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.exoplatform.commons-exo</groupId>
