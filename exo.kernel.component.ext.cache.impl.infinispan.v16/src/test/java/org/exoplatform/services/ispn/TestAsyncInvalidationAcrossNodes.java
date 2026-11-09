@@ -79,6 +79,11 @@ public class TestAsyncInvalidationAcrossNodes
    private static final String LISTS = "lists";
 
    /**
+    * A cache whose writer has a listener that counts the puts and removes it is notified of
+    */
+   private static final String COUNTED = "counted";
+
+   /**
     * A cache whose nodes place a key in different segments
     */
    private static final String SKEWED = "skewed";
@@ -295,6 +300,32 @@ public class TestAsyncInvalidationAcrossNodes
       assertEquals("The writes send one clear each, the loads none", 20, clears.sent.get());
    }
 
+   @Test
+   public void testRemoveNotifiesTheListenersOfItsNodeOfARemoveOnly() throws Exception
+   {
+      AsyncInvalidationExoCache<String, String> countedWriter = invalidated(node1, COUNTED);
+      AsyncInvalidationExoCache<String, String> countedReader = invalidated(node2, COUNTED);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(COUNTED), 2);
+      countedWriter.putLocal(KEY, "loaded");
+      countedReader.putLocal(KEY, "former");
+      AtomicInteger puts = new AtomicInteger();
+      AtomicInteger removes = new AtomicInteger();
+      countedWriter.addCacheListener(new Counting(puts, removes));
+
+      countedWriter.remove(KEY);
+
+      assertEvicted(countedReader, KEY);
+      // The put of the invalidation hash notifies the removing node too, asynchronously
+      Cache<Object, Object> replicated = node1.getCache(COUNTED);
+      for (int i = 0; i < 100 && !replicated.containsKey(KEY); i++)
+      {
+         Thread.sleep(100);
+      }
+      Thread.sleep(500);
+      assertEquals(0, puts.get());
+      assertEquals(1, removes.get());
+   }
+
    private static void assertEvicted(AsyncInvalidationExoCache<String, String> cache, String key) throws InterruptedException
    {
       // The invalidation reaches the other node asynchronously
@@ -336,6 +367,7 @@ public class TestAsyncInvalidationAcrossNodes
       replicatedAsync(holder.newConfigurationBuilder(INVALIDATED));
       replicatedAsync(holder.newConfigurationBuilder(LISTENED));
       replicatedAsync(holder.newConfigurationBuilder(LISTS));
+      replicatedAsync(holder.newConfigurationBuilder(COUNTED));
       // Unbounded, as a cache whose size is not positive: each segment holds its entries in a map of its own
       ConfigurationBuilder skewedCache = holder.newConfigurationBuilder(SKEWED);
       skewedCache.clustering().cacheMode(CacheMode.REPL_ASYNC);
@@ -456,6 +488,32 @@ public class TestAsyncInvalidationAcrossNodes
             sent.incrementAndGet();
          }
          super.put(key, value);
+      }
+   }
+
+   private static class Counting extends ClearOnPut
+   {
+      private final AtomicInteger puts;
+
+      private final AtomicInteger removes;
+
+      private Counting(AtomicInteger puts, AtomicInteger removes)
+      {
+         super(null);
+         this.puts = puts;
+         this.removes = removes;
+      }
+
+      @Override
+      public void onPut(CacheListenerContext context, String key, String obj)
+      {
+         puts.incrementAndGet();
+      }
+
+      @Override
+      public void onRemove(CacheListenerContext context, String key, String obj)
+      {
+         removes.incrementAndGet();
       }
    }
 }
