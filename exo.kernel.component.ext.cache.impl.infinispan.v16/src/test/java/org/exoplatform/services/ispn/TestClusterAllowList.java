@@ -392,6 +392,57 @@ public class TestClusterAllowList
       assertFalse(ClusterJavaSerializationMarshaller.warnRefusal(refusal));
    }
 
+   @Test
+   public void testAWriteLargerThanTheWarningSizeProceedsAndIsWarnedOnceForItsClass() throws Exception
+   {
+      ClusterJavaSerializationMarshaller warning =
+         new ClusterJavaSerializationMarshaller(allowList.getInfinispanAllowList(), 100);
+
+      Large copy = (Large)warning.objectFromByteBuffer(warning.objectToByteBuffer(new Large(200)));
+
+      assertEquals(200, copy.bytes.length);
+      // The write was warned: its class is not warned again
+      assertFalse(warning.warnIfOversized(1000, () -> "an object of class " + Large.class.getName()));
+   }
+
+   @Test
+   public void testAWriteWithinTheWarningSizeOrWithTheWarningOffIsNotWarned() throws Exception
+   {
+      String source = "the request of the command " + System.nanoTime();
+      ClusterJavaSerializationMarshaller warning =
+         new ClusterJavaSerializationMarshaller(allowList.getInfinispanAllowList(), 100);
+      ClusterJavaSerializationMarshaller off = new ClusterJavaSerializationMarshaller(allowList.getInfinispanAllowList(), 0);
+
+      warning.objectToByteBuffer(new byte[10], null, () -> source);
+      off.objectToByteBuffer(new byte[200], null, () -> source);
+
+      // Neither write was warned: the first larger write of the source is
+      assertTrue(warning.warnIfOversized(200, () -> source));
+   }
+
+   @Test
+   public void testTheWarningSizeIsReadFromItsProperty()
+   {
+      assertEquals(ClusterJavaSerializationMarshaller.DEFAULT_WARN_SIZE, ClusterJavaSerializationMarshaller.warnSize(null));
+      assertEquals(ClusterJavaSerializationMarshaller.DEFAULT_WARN_SIZE, ClusterJavaSerializationMarshaller.warnSize(" "));
+      assertEquals(0, ClusterJavaSerializationMarshaller.warnSize("0"));
+      assertEquals(2048, ClusterJavaSerializationMarshaller.warnSize(" 2048 "));
+      // A value that is not a number keeps the default, with a warning
+      assertEquals(ClusterJavaSerializationMarshaller.DEFAULT_WARN_SIZE, ClusterJavaSerializationMarshaller.warnSize("1MB"));
+   }
+
+   static final class Large implements Serializable
+   {
+      private static final long serialVersionUID = 1L;
+
+      private final byte[]      bytes;
+
+      Large(int size)
+      {
+         this.bytes = new byte[size];
+      }
+   }
+
    static final class PlatformException extends Exception
    {
       private static final long serialVersionUID = 1L;
