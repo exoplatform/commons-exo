@@ -88,6 +88,11 @@ public class TestAsyncInvalidationAcrossNodes
     */
    private static final String SKEWED = "skewed";
 
+   /**
+    * A cache whose nodes place a clear or a selection in different segments
+    */
+   private static final String SKEWED_MARKERS = "skewed-markers";
+
    private static DefaultCacheManager node1;
 
    private static DefaultCacheManager node2;
@@ -263,6 +268,31 @@ public class TestAsyncInvalidationAcrossNodes
    }
 
    @Test
+   public void testAClearAndASelectionReachANodeThatPlacesTheirKeysInOtherSegments() throws Exception
+   {
+      AsyncInvalidationExoCache<String, String> skewedWriter = invalidated(node1, SKEWED_MARKERS);
+      AsyncInvalidationExoCache<String, String> skewedReader = invalidated(node2, SKEWED_MARKERS);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(SKEWED_MARKERS), 2);
+      // The marker of a clear is an enum, whose hash is its identity hash: each JVM places it in a segment of its own
+      skewedReader.putLocal(KEY, "former");
+      skewedWriter.clearCache();
+      assertEvicted(skewedReader, KEY);
+      // A second clear finds its marker where the first one left it
+      skewedReader.putLocal(KEY, "former");
+      skewedWriter.clearCache();
+      assertEvicted(skewedReader, KEY);
+
+      skewedReader.putLocal(KEY, "former");
+      skewedReader.putLocal(OTHER, "kept");
+      skewedWriter.select(new KeySelector(KEY));
+      assertEvicted(skewedReader, KEY);
+      assertEquals("kept", skewedReader.get(OTHER));
+      skewedReader.putLocal(KEY, "former");
+      skewedWriter.select(new KeySelector(KEY));
+      assertEvicted(skewedReader, KEY);
+   }
+
+   @Test
    public void testLoadsSendNoClearAndEachWriteSendsOne() throws Exception
    {
       ClearsSent clears = new ClearsSent(node1, LISTS);
@@ -369,11 +399,14 @@ public class TestAsyncInvalidationAcrossNodes
       replicatedAsync(holder.newConfigurationBuilder(LISTS));
       replicatedAsync(holder.newConfigurationBuilder(COUNTED));
       // Unbounded, as a cache whose size is not positive: each segment holds its entries in a map of its own
-      ConfigurationBuilder skewedCache = holder.newConfigurationBuilder(SKEWED);
-      skewedCache.clustering().cacheMode(CacheMode.REPL_ASYNC);
-      if (skewed)
+      for (String name : new String[] {SKEWED, SKEWED_MARKERS})
       {
-         skewedCache.clustering().hash().keyPartitioner(new ShiftedPartitioner());
+         ConfigurationBuilder skewedCache = holder.newConfigurationBuilder(name);
+         skewedCache.clustering().cacheMode(CacheMode.REPL_ASYNC);
+         if (skewed)
+         {
+            skewedCache.clustering().hash().keyPartitioner(new ShiftedPartitioner());
+         }
       }
       return new DefaultCacheManager(holder, true);
    }
