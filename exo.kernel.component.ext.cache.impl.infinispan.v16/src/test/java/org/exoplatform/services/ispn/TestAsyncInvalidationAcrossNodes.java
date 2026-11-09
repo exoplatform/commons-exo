@@ -25,18 +25,23 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.awt.Point;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
+import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.commons.marshall.MarshallingException;
 import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.context.Flag;
 import org.infinispan.distribution.ch.impl.HashFunctionPartitioner;
 import org.infinispan.eviction.EvictionStrategy;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
+import org.infinispan.configuration.parsing.ParserRegistry;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
 import org.jgroups.conf.ProtocolStackConfigurator;
@@ -53,10 +58,13 @@ import org.exoplatform.services.cache.ExoCacheConfig;
 import org.exoplatform.services.cache.ObjectCacheInfo;
 import org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheCreator.GenericExoCache;
 import org.exoplatform.services.cache.invalidation.AsyncInvalidationExoCache;
+import org.exoplatform.services.cache.invalidation.InvalidationExoCache;
 
 /**
  * An asynchronously invalidated cache on two nodes, each over its own Infinispan cache replicated asynchronously, as
  * the cluster template builds it: what a node removes or clears goes from the entries the other node loaded itself.
+ * The {@code testSync} cases check the same on a synchronously invalidated cache, over the cache the synchronous
+ * cluster template declares.
  */
 public class TestAsyncInvalidationAcrossNodes
 {
@@ -93,6 +101,13 @@ public class TestAsyncInvalidationAcrossNodes
     */
    private static final String SKEWED_MARKERS = "skewed-markers";
 
+   /**
+    * A synchronously invalidated cache, over the replicated cache the synchronous cluster template declares
+    */
+   private static final String SYNC_INVALIDATED = "sync-invalidated";
+
+   private static final String SYNC_TEMPLATE = "conf/cache/infinispan/cluster/cache-config.xml";
+
    private static DefaultCacheManager node1;
 
    private static DefaultCacheManager node2;
@@ -100,6 +115,10 @@ public class TestAsyncInvalidationAcrossNodes
    private static AsyncInvalidationExoCache<String, String> writer;
 
    private static AsyncInvalidationExoCache<String, String> reader;
+
+   private static InvalidationExoCache<String, String> syncWriter;
+
+   private static InvalidationExoCache<String, String> syncReader;
 
    @BeforeClass
    public static void startNodes() throws Exception
@@ -109,7 +128,10 @@ public class TestAsyncInvalidationAcrossNodes
       node2 = startNode(TestSharedJGroupsTransport.stack(ports[1], ports), "node2", true);
       writer = invalidated(node1, INVALIDATED);
       reader = invalidated(node2, INVALIDATED);
+      syncWriter = syncInvalidated(node1);
+      syncReader = syncInvalidated(node2);
       TestSharedJGroupsTransport.waitForMembers(node1.getCache(INVALIDATED), 2);
+      TestSharedJGroupsTransport.waitForMembers(node1.getCache(SYNC_INVALIDATED), 2);
       TestSharedJGroupsTransport.waitForMembers(node1.getCache(SKEWED), 2);
    }
 
@@ -142,6 +164,12 @@ public class TestAsyncInvalidationAcrossNodes
       // A remove leaves its hash in the replicated cache of every node: each test starts without it
       node1.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
       node2.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
+      syncWriter.removeLocal(KEY);
+      syncReader.removeLocal(KEY);
+      syncReader.removeLocal(OTHER);
+      // A clear or a selection leaves its marker in the replicated cache of every node
+      node1.getCache(SYNC_INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
+      node2.getCache(SYNC_INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
    }
 
    @Test
@@ -262,6 +290,46 @@ public class TestAsyncInvalidationAcrossNodes
       assertEvicted(skewedWriter, KEY);
    }
 
+   @Test
+   public void testSyncRemoveEvictsTheEntryOnlyTheOtherNodeLoaded()
+   {
+      syncReader.putLocal(KEY, "former");
+      assertEquals("former", syncReader.get(KEY));
+
+      // The replicated cache is transactional: the remove of a key the writing node does not hold reaches the others
+      syncWriter.remove(KEY);
+
+      // and is applied there before it returns
+      assertNull(syncReader.get(KEY));
+   }
+
+   @Test
+   public void testSyncClearEmptiesTheOtherNodeOfTheEntriesItLoaded()
+   {
+      syncReader.putLocal(KEY, "former");
+      syncReader.putLocal(OTHER, "former");
+      assertEquals(2, syncReader.getCacheSize());
+
+      syncWriter.clearCache();
+
+      // The clear of the replicated cache stays on the writing node: the marker it puts empties the other node
+      assertNull(syncReader.get(KEY));
+      assertEquals(0, syncReader.getCacheSize());
+   }
+
+   @Test
+   public void testSyncSelectionEvictsTheSelectedEntriesOnlyTheOtherNodeLoaded() throws Exception
+   {
+      syncReader.putLocal(KEY, "former");
+      syncReader.putLocal(OTHER, "kept");
+
+      // The writing node holds none of them: the selector itself goes to the other node
+      syncWriter.select(new KeySelector(KEY));
+
+      assertNull(syncReader.get(KEY));
+      assertEquals("kept", syncReader.get(OTHER));
+   }
+
    private static void assertEvicted(String key) throws InterruptedException
    {
       assertEvicted(reader, key);
@@ -373,6 +441,13 @@ public class TestAsyncInvalidationAcrossNodes
       return new AsyncInvalidationExoCache<>((ExoCache) new GenericExoCache(config(name), cache));
    }
 
+   @SuppressWarnings({"unchecked", "rawtypes"})
+   private static InvalidationExoCache<String, String> syncInvalidated(DefaultCacheManager node)
+   {
+      Cache cache = node.getCache(SYNC_INVALIDATED);
+      return new InvalidationExoCache<>((ExoCache) new GenericExoCache(config(SYNC_INVALIDATED), cache));
+   }
+
    private static ExoCacheConfig config(String name)
    {
       ExoCacheConfig config = new ExoCacheConfig();
@@ -398,6 +473,7 @@ public class TestAsyncInvalidationAcrossNodes
       replicatedAsync(holder.newConfigurationBuilder(LISTENED));
       replicatedAsync(holder.newConfigurationBuilder(LISTS));
       replicatedAsync(holder.newConfigurationBuilder(COUNTED));
+      holder.newConfigurationBuilder(SYNC_INVALIDATED).read(syncTemplate());
       // Unbounded, as a cache whose size is not positive: each segment holds its entries in a map of its own
       for (String name : new String[] {SKEWED, SKEWED_MARKERS})
       {
@@ -409,6 +485,19 @@ public class TestAsyncInvalidationAcrossNodes
          }
       }
       return new DefaultCacheManager(holder, true);
+   }
+
+   private static Configuration syncTemplate() throws IOException
+   {
+      try (InputStream template =
+         TestAsyncInvalidationAcrossNodes.class.getClassLoader().getResourceAsStream(SYNC_TEMPLATE))
+      {
+         return new ParserRegistry(TestAsyncInvalidationAcrossNodes.class.getClassLoader())
+            .parse(template, MediaType.APPLICATION_XML)
+            .getNamedConfigurationBuilders()
+            .get("default")
+            .build();
+      }
    }
 
    private static void replicatedAsync(ConfigurationBuilder cache)
