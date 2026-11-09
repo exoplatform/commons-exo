@@ -159,8 +159,11 @@ public class TestAsyncInvalidationAcrossNodes
    @Test
    public void testRemoveAgainEvictsTheEntryOfANodeThatEvictedTheKey() throws Exception
    {
+      reader.putLocal(KEY, "probe");
       writer.remove(KEY);
-      Cache<Object, Object> replicated = node2.getCache("invalidated");
+      // The other node applies the first remove before it loads the entry again
+      assertEvicted(KEY);
+      Cache<Object, Object> replicated = node2.getCache(INVALIDATED);
       for (int i = 0; i < 100 && !replicated.containsKey(KEY); i++)
       {
          Thread.sleep(100);
@@ -191,7 +194,10 @@ public class TestAsyncInvalidationAcrossNodes
    @Test
    public void testASecondRemoveEvictsTheEntryTheOtherNodeLoadedAgain() throws Exception
    {
+      reader.putLocal(KEY, "probe");
       writer.remove(KEY);
+      // The other node applies the first remove before it loads the entry again
+      assertEvicted(KEY);
       Cache<Object, Object> replicated = node2.getCache(INVALIDATED);
       for (int i = 0; i < 100 && !replicated.containsKey(KEY); i++)
       {
