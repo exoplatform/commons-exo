@@ -79,6 +79,13 @@
         <groupId>jakarta.transaction</groupId>
         <artifactId>jakarta.transaction-api</artifactId>
       </dependency>
+      <!-- The javax JTA API, for the third-party libraries of the platform still compiled against it (ehcache-core,
+           picketlink-idm-common, jboss-rmi-api); the platform's own transaction services use jakarta.transaction -->
+      <dependency>
+         <groupId>javax.transaction</groupId>
+         <artifactId>javax.transaction-api</artifactId>
+         <scope>runtime</scope>
+      </dependency>
       <dependency>
          <groupId>org.hibernate.orm</groupId>
          <artifactId>hibernate-core</artifactId>
