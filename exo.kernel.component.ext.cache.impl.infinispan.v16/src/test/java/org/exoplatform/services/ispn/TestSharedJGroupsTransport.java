@@ -190,6 +190,27 @@ public class TestSharedJGroupsTransport
    }
 
    @Test
+   public void testEachShippedServiceStackCreatesItsMainChannel() throws Exception
+   {
+      for (String stackFile : List.of("jgroups-service-tcp.xml", "jgroups-service-udp.xml"))
+      {
+         String xml;
+         try (InputStream input = TestSharedJGroupsTransport.class.getResourceAsStream("/conf/jgroups/" + stackFile))
+         {
+            assertNotNull(stackFile, input);
+            xml = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+         }
+         ProtocolStackConfigurator stack = SharedJGroupsTransport.parse(xml);
+         assertNotNull(stackFile, SharedJGroupsTransport.getSingletonName(stack));
+         // As MainChannel does, without singleton_name and without connecting: JGroups refuses an unknown attribute
+         try (JChannel channel = new JChannel(new MainStack(stack)))
+         {
+            assertNotNull(stackFile, channel.getProtocolStack().getTransport());
+         }
+      }
+   }
+
+   @Test
    public void testStackWithoutSingletonNameKeepsItsOwnChannel() throws Exception
    {
       TypedProperties properties = loadJGroupsConfig("jar:/conf/jgroups/udp.xml");
