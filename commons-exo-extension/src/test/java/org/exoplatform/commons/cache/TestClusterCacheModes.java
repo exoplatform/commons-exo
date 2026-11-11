@@ -35,7 +35,8 @@ import org.w3c.dom.NodeList;
 
 /**
  * In a cluster, a cache of the data a shared store holds is invalidated: replication is kept for the state no store
- * holds, which the other nodes could not load.
+ * holds, which the other nodes could not load. A cache of what each node loads from its own deployment (templates,
+ * resource bundles) stays local: every node holds the same content, and no write on one node changes another's.
  */
 public class TestClusterCacheModes
 {
@@ -56,6 +57,16 @@ public class TestClusterCacheModes
       assertEquals(Set.of("commons.UserStateService", "portal.coediting"), replicated);
       assertEquals("asyncInvalidation", modes.get("social.ActivitiesCache"));
       assertEquals("asyncInvalidation", modes.get("commons.SettingService"));
+   }
+
+   @Test
+   public void testTheCachesOfDeployedResourcesStayLocal() throws Exception
+   {
+      Map<String, String> modes = getClusterModes();
+
+      assertEquals("local", modes.get("portal.TemplateService"));
+      assertEquals("local", modes.get("portal.ResourceBundleData"));
+      assertEquals("local", modes.get("ecms.BaseResourceCache"));
    }
 
    /**
