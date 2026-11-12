@@ -22,11 +22,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.awt.Point;
+import java.util.concurrent.TimeUnit;
 
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
+import org.infinispan.context.Flag;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
 import org.infinispan.topology.CacheTopology;
@@ -36,8 +38,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Two nodes whose allow-lists differ, over a real channel: a value the writing node accepts and the other node refuses
- * never enters the cache of the other node, and what the writing node sends after it still does.
+ * Two nodes whose allow-lists differ, over a real channel, written as the cache service writes: a value the writing node
+ * accepts and the other node refuses never enters the cache of the other node, nor the writer's when the other node owns
+ * the key, and what the writing node sends after it still does.
  */
 public class TestClusterAllowListAcrossNodes
 {
@@ -97,29 +100,66 @@ public class TestClusterAllowListAcrossNodes
    }
 
    @Test
-   public void testAValueTheOtherNodeRefusesNeverEntersItsCache() throws Exception
+   public void testAValueTheOtherNodeRefusesOnAKeyItOwnsEntersNoCache() throws Exception
    {
       Cache<String, Object> written = writer.getCache(CACHE);
       Cache<String, Object> read = reader.getCache(CACHE);
+      // The write goes to the primary owner of the key, which refuses the value and replicates nothing: the writer's
+      // copy is the one the primary owner would have sent back. The caller is not told, as for any asynchronous write
+      String refused = keyOwnedBy(read, "refused-on-reader");
+      String accepted = keyOwnedBy(read, "accepted-on-reader");
 
-      // A write goes first to the primary owner of the key, which replicates it asynchronously: a node that is not the
-      // primary owner waits for the answer of the primary owner, which fails when the primary owner refuses the value.
-      // The keys are the ones this node owns, whichever segments the nodes took at their start
-      String refused = keyOwnedBy(written, "refused");
-      String accepted = keyOwnedBy(written, "accepted");
+      putAsTheCacheDoes(written, refused, new Point(1, 2));
+      putAsTheCacheDoes(written, accepted, "after");
+      awaitOn(read, accepted);
 
-      written.put(refused, new Point(1, 2));
+      assertEquals("after", read.get(accepted));
+      assertEquals("after", written.get(accepted));
+      assertFalse(read.containsKey(refused));
+      assertFalse(written.containsKey(refused));
+   }
+
+   @Test
+   public void testAValueTheOtherNodeRefusesOnAKeyTheWriterOwnsStaysOnTheWriter() throws Exception
+   {
+      Cache<String, Object> written = writer.getCache(CACHE);
+      Cache<String, Object> read = reader.getCache(CACHE);
+      // The writer, primary owner of the key, stores the value, then replicates it to the other node, which refuses it
+      String refused = keyOwnedBy(written, "refused-on-writer");
+      String accepted = keyOwnedBy(written, "accepted-on-writer");
+
+      putAsTheCacheDoes(written, refused, new Point(1, 2));
       // Sent after the refused value by the same node: the other node reads them in that order
-      written.put(accepted, "after");
-      for (int i = 0; i < 100 && !read.containsKey(accepted); i++)
-      {
-         Thread.sleep(100);
-      }
-      Thread.sleep(500);
+      putAsTheCacheDoes(written, accepted, "after");
+      awaitOn(read, accepted);
 
       assertEquals("after", read.get(accepted));
       assertFalse(read.containsKey(refused));
       assertEquals(new Point(1, 2), written.get(refused));
+   }
+
+   /**
+    * Writes as {@code AbstractExoCache#putOnly} does on a replicated asynchronous cache, and waits for the write to be
+    * sent.
+    */
+   private static void putAsTheCacheDoes(Cache<String, Object> cache, String key, Object value) throws Exception
+   {
+      cache.getAdvancedCache()
+           .withFlags(Flag.SKIP_REMOTE_LOOKUP, Flag.IGNORE_RETURN_VALUES, Flag.FORCE_ASYNCHRONOUS)
+           .putAsync(key, value)
+           .get(10, TimeUnit.SECONDS);
+   }
+
+   /**
+    * Waits for the key to reach the cache, then for the writes sent before it to be read too.
+    */
+   private static void awaitOn(Cache<String, Object> cache, String key) throws InterruptedException
+   {
+      for (int i = 0; i < 100 && !cache.containsKey(key); i++)
+      {
+         Thread.sleep(100);
+      }
+      Thread.sleep(500);
    }
 
    /**
