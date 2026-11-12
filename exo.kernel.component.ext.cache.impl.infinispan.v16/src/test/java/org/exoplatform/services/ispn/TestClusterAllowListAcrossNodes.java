@@ -29,6 +29,7 @@ import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
+import org.infinispan.topology.CacheTopology;
 import org.jgroups.conf.ProtocolStackConfigurator;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -59,6 +60,20 @@ public class TestClusterAllowListAcrossNodes
                          new ClusterAllowList(Point.class.getName()));
       reader = startNode(TestSharedJGroupsTransport.stack(ports[1], ports), "reader", new ClusterAllowList(null));
       TestSharedJGroupsTransport.waitForMembers(writer.getCache(CACHE), 2);
+      // The primary owners of the segments are final once the join is rebalanced, on both nodes
+      waitForRebalance(writer.getCache(CACHE));
+      waitForRebalance(reader.getCache(CACHE));
+   }
+
+   private static void waitForRebalance(Cache<?, ?> cache) throws InterruptedException
+   {
+      for (int i = 0; i < 100 && cache.getAdvancedCache().getDistributionManager().getCacheTopology().getPhase()
+                                      != CacheTopology.Phase.NO_REBALANCE; i++)
+      {
+         Thread.sleep(100);
+      }
+      assertEquals(CacheTopology.Phase.NO_REBALANCE,
+                   cache.getAdvancedCache().getDistributionManager().getCacheTopology().getPhase());
    }
 
    @AfterClass
@@ -87,18 +102,40 @@ public class TestClusterAllowListAcrossNodes
       Cache<String, Object> written = writer.getCache(CACHE);
       Cache<String, Object> read = reader.getCache(CACHE);
 
-      written.put("refused", new Point(1, 2));
+      // A write goes first to the primary owner of the key, which replicates it asynchronously: a node that is not the
+      // primary owner waits for the answer of the primary owner, which fails when the primary owner refuses the value.
+      // The keys are the ones this node owns, whichever segments the nodes took at their start
+      String refused = keyOwnedBy(written, "refused");
+      String accepted = keyOwnedBy(written, "accepted");
+
+      written.put(refused, new Point(1, 2));
       // Sent after the refused value by the same node: the other node reads them in that order
-      written.put("accepted", "after");
-      for (int i = 0; i < 100 && !read.containsKey("accepted"); i++)
+      written.put(accepted, "after");
+      for (int i = 0; i < 100 && !read.containsKey(accepted); i++)
       {
          Thread.sleep(100);
       }
       Thread.sleep(500);
 
-      assertEquals("after", read.get("accepted"));
-      assertFalse(read.containsKey("refused"));
-      assertEquals(new Point(1, 2), written.get("refused"));
+      assertEquals("after", read.get(accepted));
+      assertFalse(read.containsKey(refused));
+      assertEquals(new Point(1, 2), written.get(refused));
+   }
+
+   /**
+    * @return a key made of the prefix whose primary owner is the node of the cache
+    */
+   private static String keyOwnedBy(Cache<String, Object> cache, String prefix)
+   {
+      for (int i = 0; i < 1000; i++)
+      {
+         String key = prefix + i;
+         if (cache.getAdvancedCache().getDistributionManager().getCacheTopology().getDistribution(key).isPrimary())
+         {
+            return key;
+         }
+      }
+      throw new IllegalStateException("No key of " + prefix + " is owned by the node");
    }
 
    private static DefaultCacheManager startNode(ProtocolStackConfigurator stack, String nodeName,

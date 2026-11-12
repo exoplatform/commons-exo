@@ -28,6 +28,8 @@ import java.awt.Point;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
@@ -120,6 +122,13 @@ public class TestAsyncInvalidationAcrossNodes
 
    private static InvalidationExoCache<String, String> syncReader;
 
+   private static final AtomicInteger SYNC_KEYS = new AtomicInteger();
+
+   /**
+    * The keys this test put in the synchronously invalidated cache
+    */
+   private final List<String> syncKeys = new ArrayList<>();
+
    @BeforeClass
    public static void startNodes() throws Exception
    {
@@ -164,9 +173,11 @@ public class TestAsyncInvalidationAcrossNodes
       // A remove leaves its hash in the replicated cache of every node: each test starts without it
       node1.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
       node2.getCache(INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
-      syncWriter.removeLocal(KEY);
-      syncReader.removeLocal(KEY);
-      syncReader.removeLocal(OTHER);
+      for (String syncKey : syncKeys)
+      {
+         syncWriter.removeLocal(syncKey);
+         syncReader.removeLocal(syncKey);
+      }
       // A clear or a selection leaves its marker in the replicated cache of every node
       node1.getCache(SYNC_INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
       node2.getCache(SYNC_INVALIDATED).getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).clear();
@@ -293,41 +304,57 @@ public class TestAsyncInvalidationAcrossNodes
    @Test
    public void testSyncRemoveEvictsTheEntryOnlyTheOtherNodeLoaded()
    {
-      syncReader.putLocal(KEY, "former");
-      assertEquals("former", syncReader.get(KEY));
+      String key = syncKey(KEY);
+      syncReader.putLocal(key, "former");
+      assertEquals("former", syncReader.get(key));
 
       // The replicated cache is transactional: the remove of a key the writing node does not hold reaches the others
-      syncWriter.remove(KEY);
+      syncWriter.remove(key);
 
       // and is applied there before it returns
-      assertNull(syncReader.get(KEY));
+      assertNull(syncReader.get(key));
    }
 
    @Test
    public void testSyncClearEmptiesTheOtherNodeOfTheEntriesItLoaded()
    {
-      syncReader.putLocal(KEY, "former");
-      syncReader.putLocal(OTHER, "former");
+      String key = syncKey(KEY);
+      String other = syncKey(OTHER);
+      syncReader.putLocal(key, "former");
+      syncReader.putLocal(other, "former");
       assertEquals(2, syncReader.getCacheSize());
 
       syncWriter.clearCache();
 
       // The clear of the replicated cache stays on the writing node: the marker it puts empties the other node
-      assertNull(syncReader.get(KEY));
+      assertNull(syncReader.get(key));
       assertEquals(0, syncReader.getCacheSize());
    }
 
    @Test
    public void testSyncSelectionEvictsTheSelectedEntriesOnlyTheOtherNodeLoaded() throws Exception
    {
-      syncReader.putLocal(KEY, "former");
-      syncReader.putLocal(OTHER, "kept");
+      String key = syncKey(KEY);
+      String other = syncKey(OTHER);
+      syncReader.putLocal(key, "former");
+      syncReader.putLocal(other, "kept");
 
       // The writing node holds none of them: the selector itself goes to the other node
-      syncWriter.select(new KeySelector(KEY));
+      syncWriter.select(new KeySelector(key));
 
-      assertNull(syncReader.get(KEY));
-      assertEquals("kept", syncReader.get(OTHER));
+      assertNull(syncReader.get(key));
+      assertEquals("kept", syncReader.get(other));
+   }
+
+   /**
+    * @return a key no other test uses: a local removal of a cache entry is asynchronous, and the one a test or its
+    *         cleanup starts can be applied after the next test has put the same key
+    */
+   private String syncKey(String prefix)
+   {
+      String key = prefix + SYNC_KEYS.incrementAndGet();
+      syncKeys.add(key);
+      return key;
    }
 
    private static void assertEvicted(String key) throws InterruptedException
