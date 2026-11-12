@@ -71,8 +71,8 @@ public class TestCacheConfigurationReadme
    private static String getTable(File configuration) throws Exception
    {
       StringBuilder table = new StringBuilder();
-      table.append("| Cache | Profile | Max entries | Live time (s) | Cluster mode | Eviction |\n");
-      table.append("|---|---|---|---|---|---|\n");
+      table.append("| Cache | Profile | Max entries | Live time (s) | Cluster mode |\n");
+      table.append("|---|---|---|---|---|\n");
       NodeList params = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(configuration)
          .getElementsByTagName("object-param");
       for (int i = 0; i < params.getLength(); i++)
@@ -93,8 +93,6 @@ public class TestCacheConfigurationReadme
             .append(getCell(object, "liveTime"))
             .append(" | ")
             .append(getCell(object, "cacheMode"))
-            .append(" | ")
-            .append(getCell(object, "strategy"))
             .append(" |\n");
       }
       return table.toString();
