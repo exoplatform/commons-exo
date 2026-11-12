@@ -223,7 +223,8 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * saved with. The settings cache evicts each entry once it is written and again once
     * that transaction completes, committed or rolled back ({@code CacheSettingServiceImpl}):
     * after the save, a read on this node loads what the database holds, and a read on
-    * another node does once the cache invalidation reaches it.
+    * another node does once the cache invalidation reaches it, unless a load of that
+    * entry already running there read the former value: it keeps it until it expires.
     */
    @Override
    @ContainerTransactional(atomic = true)
