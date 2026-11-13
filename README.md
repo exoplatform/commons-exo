@@ -27,6 +27,7 @@ The table is generated from the configuration file: after a change there, run `m
 | `wiki.PageAttachmentCache` | notes | 1000 (`exo.cache.wiki.PageAttachmentCache.MaxNodes`) | 86400 (`exo.cache.wiki.PageAttachmentCache.TimeToLive`) | asyncInvalidation (`exo.cache.wiki.PageAttachmentCache.cacheMode`) |
 | `perkstore.product` |  | 1000 (`exo.cache.perkstore.product.MaxNodes`) | -1 (`exo.cache.perkstore.product.TimeToLive`) | asyncInvalidation (`exo.cache.perkstore.product.cacheMode`) |
 | `perkstore.order` |  | 2000 (`exo.cache.perkstore.order.MaxNodes`) | -1 (`exo.cache.perkstore.order.TimeToLive`) | asyncInvalidation (`exo.cache.perkstore.order.cacheMode`) |
+| `perkstore.globalSettings` |  | 10 (`exo.cache.perkstore.globalSettings.MaxNodes`) | 30 (`exo.cache.perkstore.globalSettings.TimeToLive`) | asyncInvalidation (`exo.cache.perkstore.globalSettings.cacheMode`) |
 | `portal.User` |  | 5000 (`exo.cache.portal.user.MaxNodes`) | 3600 (`exo.cache.portal.user.TimeToLive`) | asyncInvalidation (`exo.cache.portal.user.cacheMode`) |
 | `portal.Profile` |  | 5000 (`exo.cache.portal.profile.MaxNodes`) | 3600 (`exo.cache.portal.profile.TimeToLive`) | asyncInvalidation (`exo.cache.portal.profile.cacheMode`) |
 | `portal.Membership` |  | 5000 (`exo.cache.portal.membership.MaxNodes`) | 86400 (`exo.cache.portal.membership.TimeToLive`) | asyncInvalidation (`exo.cache.portal.membership.cacheMode`) |
@@ -71,6 +72,8 @@ The table is generated from the configuration file: after a change there, run `m
 | `social.ProfileAvatar` |  | 300 (`exo.cache.social.ProfileAvatar.MaxNodes`) | 600 (`exo.cache.social.ProfileAvatar.TimeToLive`) | asyncInvalidation (`exo.cache.social.TranslationCache.cacheMode`) |
 | `wallet.transaction` | wallet | 2000 (`exo.cache.wallet.transaction.MaxNodes`) | -1 (`exo.cache.wallet.transaction.TimeToLive`) | asyncInvalidation (`exo.cache.wallet.transaction.cacheMode`) |
 | `wallet.account` | wallet | 2000 (`exo.cache.wallet.account.MaxNodes`) | -1 (`exo.cache.wallet.account.TimeToLive`) | asyncInvalidation (`exo.cache.wallet.account.cacheMode`) |
+| `wallet.rewardSettings` | wallet | 10 (`exo.cache.wallet.rewardSettings.MaxNodes`) | 30 (`exo.cache.wallet.rewardSettings.TimeToLive`) | asyncInvalidation (`exo.cache.wallet.rewardSettings.cacheMode`) |
+| `wallet.addressLabels` | wallet | 10 (`exo.cache.wallet.addressLabels.MaxNodes`) | 30 (`exo.cache.wallet.addressLabels.TimeToLive`) | asyncInvalidation (`exo.cache.wallet.addressLabels.cacheMode`) |
 | `social.profileSettings` |  | 2000 (`exo.cache.social.profileSettings.MaxNodes`) | -1 (`exo.cache.social.profileSettings.TimeToLive`) | asyncInvalidation (`exo.cache.social.profileSettings.cacheMode`) |
 | `social.profileSettingIdsByName` |  | 2000 (`exo.cache.social.profileSettingIdsByName.MaxNodes`) | -1 (`exo.cache.social.profileSettingIdsByName.TimeToLive`) | asyncInvalidation (`exo.cache.social.profileSettingIdsByName.cacheMode`) |
 | `commons.WebNotificationCountByPluginCache` |  | 300 (`exo.cache.commons.WebNotificationCountByPluginCache.MaxNodes`) | 600 (`exo.cache.commons.WebNotificationCountByPluginCache.TimeToLive`) | asyncInvalidation (`exo.cache.commons.WebNotificationCountByPluginCache.cacheMode`) |
