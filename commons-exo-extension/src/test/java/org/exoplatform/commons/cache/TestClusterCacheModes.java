@@ -91,6 +91,13 @@ public class TestClusterCacheModes
       assertEquals("", getDeclarationProfiles("perkstore.globalSettings"));
    }
 
+   @Test
+   public void testTheRewardingAdministratorsCacheIsInvalidated() throws Exception
+   {
+      assertEquals("asyncInvalidation", getClusterModes().get("gamification.administrators"));
+      assertEquals("gamification", getDeclarationProfiles("gamification.administrators"));
+   }
+
    /**
     * @param cacheName the name of a declared cache
     * @return the profiles its declaration applies to, empty for every profile

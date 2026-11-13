@@ -287,6 +287,27 @@
             </field>
           </object>
         </object-param>
+        <!-- The rewarding administrators: each node keeps its own load, a change evicts it on every node; the live time bounds a
+             load read before its own change reached the node -->
+        <object-param profiles="gamification">
+          <name>gamification.administrators</name>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>gamification.administrators</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.gamification.administrators.MaxNodes:10}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.gamification.administrators.TimeToLive:30}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.administrators.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
         <object-param profiles="gamification">
           <name>gamification.rule</name>
           <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
