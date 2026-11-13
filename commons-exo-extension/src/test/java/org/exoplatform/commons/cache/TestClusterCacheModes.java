@@ -76,6 +76,40 @@ public class TestClusterCacheModes
       assertEquals("local", modes.get("ecms.BaseResourceCache"));
    }
 
+   @Test
+   public void testTheSettingsCachesOfTheWalletAndThePerkStoreAreInvalidated() throws Exception
+   {
+      // An undeclared cache takes the cluster template in local mode
+      Map<String, String> modes = getClusterModes();
+
+      assertEquals("asyncInvalidation", modes.get("wallet.rewardSettings"));
+      assertEquals("asyncInvalidation", modes.get("wallet.addressLabels"));
+      assertEquals("asyncInvalidation", modes.get("perkstore.globalSettings"));
+      // Each applies where its add-on runs
+      assertEquals("wallet", getDeclarationProfiles("wallet.rewardSettings"));
+      assertEquals("wallet", getDeclarationProfiles("wallet.addressLabels"));
+      assertEquals("", getDeclarationProfiles("perkstore.globalSettings"));
+   }
+
+   /**
+    * @param cacheName the name of a declared cache
+    * @return the profiles its declaration applies to, empty for every profile
+    */
+   private static String getDeclarationProfiles(String cacheName) throws Exception
+   {
+      File file = new File(System.getProperty("basedir", "."), CONFIGURATION);
+      NodeList params = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("object-param");
+      for (int i = 0; i < params.getLength(); i++)
+      {
+         Element param = (Element)params.item(i);
+         if (cacheName.equals(param.getElementsByTagName("name").item(0).getTextContent().trim()))
+         {
+            return param.getAttribute("profiles");
+         }
+      }
+      throw new AssertionError("No declaration of cache " + cacheName);
+   }
+
    /**
     * @return the default mode of each cache in the cluster profile, by cache name
     */
