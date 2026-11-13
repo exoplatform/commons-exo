@@ -18,10 +18,10 @@
  */
 package org.exoplatform.services.transaction;
 
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
-import javax.transaction.UserTransaction;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.SystemException;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.UserTransaction;
 import javax.transaction.xa.XAResource;
 
 /**
