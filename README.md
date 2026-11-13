@@ -8,6 +8,7 @@ The caches the extension declares in `commons-exo-extension/src/main/webapp/WEB-
 - **Cluster mode** applies in the `cluster` profile only: `asyncInvalidation` sends only the keys of what changes, `replication` sends the values, `local` keeps each node's entries to itself.
 - **Max entries**: a full cache evicts by Infinispan 16's single eviction policy; the `exo.cache.<name>.strategy` values the file still carries are accepted and ignored.
 - **Profile** names the profile that declares the cache, when it is not declared in every profile.
+- **A node that joins** a cluster starts with every cache empty, the replicated ones included: the cluster template transfers no state unless `exo.cache.cluster.statetransfer.fetchinmemorystate` is `true` (default `false`). Of the replicated caches here, `portal.coediting` is put again by each open editor within 10 seconds, and `commons.UserStateService` falls back to each user's stored status. The add-ons' own caches state their limits where they declare them, such as the OnlyOffice viewer configurations in that add-on's `configuration.xml`.
 
 The table is generated from the configuration file: after a change there, run `mvn test -pl commons-exo-extension -Dtest=TestCacheConfigurationReadme -Dexo.cache.readme.update=true` and commit this file; the build fails while they differ.
 
