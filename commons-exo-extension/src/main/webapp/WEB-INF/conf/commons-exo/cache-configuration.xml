@@ -824,6 +824,31 @@
           </object>
         </object-param>
         <object-param>
+          <name>portal.UIPortal</name>
+          <description>The Cache configuration for the sites each node built</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>portal.UIPortal</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.portal.UIPortal.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.UIPortal.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.UIPortal.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.UIPortal.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
           <name>portal.PageService</name>
           <description>The Cache configuration for the page service</description>
           <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">

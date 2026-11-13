@@ -44,6 +44,7 @@ The table is generated from the configuration file: after a change there, run `m
 | `portal.SiteKeysByFilterService` |  | 1000 (`exo.cache.portal.site.MaxNodes`) | 86400 (`exo.cache.portal.site.TimeToLive`) | asyncInvalidation (`exo.cache.portal.site.cacheMode`) |
 | `portal.DescriptionService` |  | 10000 (`exo.cache.portal.description.MaxNodes`) | 86400 (`exo.cache.portal.description.TimeToLive`) | asyncInvalidation (`exo.cache.portal.description.cacheMode`) |
 | `portal.DescriptionLocales` |  | 5000 (`exo.cache.portal.DescriptionLocales.MaxNodes`) | 86400 (`exo.cache.portal.DescriptionLocales.TimeToLive`) | asyncInvalidation (`exo.cache.portal.DescriptionLocales.cacheMode`) |
+| `portal.UIPortal` |  | 5000 (`exo.cache.portal.UIPortal.MaxNodes`) | 86400 (`exo.cache.portal.UIPortal.TimeToLive`) | asyncInvalidation (`exo.cache.portal.UIPortal.cacheMode`) |
 | `portal.PageService` |  | 1000 (`exo.cache.portal.page.MaxNodes`) | 86400 (`exo.cache.portal.page.TimeToLive`) | asyncInvalidation (`exo.cache.portal.page.cacheMode`) |
 | `portal.TemplateService` |  | 5000 (`exo.cache.portal.template.MaxNodes`) | -1 (`exo.cache.portal.template.TimeToLive`) | local (`exo.cache.portal.template.cacheMode`) |
 | `portal.ResourceBundleData` |  | 1000 (`exo.cache.portal.ResourceBundleData.MaxNodes`) | -1 (`exo.cache.portal.ResourceBundleData.TimeToLive`) | local (`exo.cache.portal.ResourceBundleData.cacheMode`) |
