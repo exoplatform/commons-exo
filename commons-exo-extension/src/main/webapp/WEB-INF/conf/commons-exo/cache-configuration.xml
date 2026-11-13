@@ -1483,6 +1483,31 @@
             </field>
           </object>
         </object-param>
+        <object-param>
+          <name>social.profileSettingIds</name>
+          <description></description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>social.profileSettingIds</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.profileSettingIds.MaxNodes:2000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.profileSettingIds.TimeToLive:-1}</long>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.social.profileSettingIds.strategy:LIRS}</string>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.social.profileSettingIds.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
         <object-param profiles="ide">
           <name>ide.widget</name>
           <description></description>
