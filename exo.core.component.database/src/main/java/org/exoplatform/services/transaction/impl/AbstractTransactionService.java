@@ -23,16 +23,16 @@ import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.transaction.TransactionService;
 
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.InvalidTransactionException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.Status;
-import javax.transaction.SystemException;
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-import javax.transaction.UserTransaction;
+import jakarta.transaction.HeuristicMixedException;
+import jakarta.transaction.HeuristicRollbackException;
+import jakarta.transaction.InvalidTransactionException;
+import jakarta.transaction.NotSupportedException;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.Status;
+import jakarta.transaction.SystemException;
+import jakarta.transaction.Transaction;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.UserTransaction;
 import javax.transaction.xa.XAResource;
 
 /**
@@ -395,7 +395,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
       
       /**
-       * @see javax.transaction.UserTransaction#begin()
+       * @see jakarta.transaction.UserTransaction#begin()
        */
       public void begin() throws NotSupportedException, SystemException
       {
@@ -403,7 +403,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
 
       /**
-       * @see javax.transaction.UserTransaction#commit()
+       * @see jakarta.transaction.UserTransaction#commit()
        */
       public void commit() throws RollbackException, HeuristicMixedException, HeuristicRollbackException,
          SecurityException, IllegalStateException, SystemException
@@ -412,7 +412,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
 
       /**
-       * @see javax.transaction.UserTransaction#rollback()
+       * @see jakarta.transaction.UserTransaction#rollback()
        */
       public void rollback() throws IllegalStateException, SecurityException, SystemException
       {
@@ -420,7 +420,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
 
       /**
-       * @see javax.transaction.UserTransaction#setRollbackOnly()
+       * @see jakarta.transaction.UserTransaction#setRollbackOnly()
        */
       public void setRollbackOnly() throws IllegalStateException, SystemException
       {
@@ -428,7 +428,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
 
       /**
-       * @see javax.transaction.UserTransaction#getStatus()
+       * @see jakarta.transaction.UserTransaction#getStatus()
        */
       public int getStatus() throws SystemException
       {
@@ -436,7 +436,7 @@ public abstract class AbstractTransactionService implements TransactionService
       }
 
       /**
-       * @see javax.transaction.UserTransaction#setTransactionTimeout(int)
+       * @see jakarta.transaction.UserTransaction#setTransactionTimeout(int)
        */
       public void setTransactionTimeout(int timeout) throws SystemException
       {

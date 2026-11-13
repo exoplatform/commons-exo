@@ -220,15 +220,11 @@ public class SettingProviderConfigStorage implements ConnectorProviderConfigStor
     * run in one transaction ({@code @ContainerTransactional(atomic = true)}), which the
     * settings store's own writes join, so a failure on any entry rolls back the ones
     * written before it. A stored secret is never paired with free-text values it was not
-    * saved with. On the node that ran a save that rolled back, the settings cache may
-    * still return the new value of an entry written before the failure, until that entry
-    * leaves the cache: {@code CacheSettingServiceImpl.set} puts the value in the cache
-    * before it writes it to the database. The same ordering opens a window on a save that
-    * commits: a read of an entry on that node between its cache update and the commit can
-    * reload the row still committed, and the cache then serves that former value until the
-    * entry leaves it. The race is the settings cache's (it updates before the commit
-    * rather than after); the one transaction widens its window from one write to the
-    * whole configuration.
+    * saved with. The settings cache evicts each entry once it is written and again once
+    * that transaction completes, committed or rolled back ({@code CacheSettingServiceImpl}):
+    * after the save, a read on this node loads what the database holds, and a read on
+    * another node does once the cache invalidation reaches it, unless a load of that
+    * entry already running there read the former value: it keeps it until it expires.
     */
    @Override
    @ContainerTransactional(atomic = true)
