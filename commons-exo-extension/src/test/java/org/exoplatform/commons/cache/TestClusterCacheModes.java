@@ -60,6 +60,13 @@ public class TestClusterCacheModes
    }
 
    @Test
+   public void testTheSitesANodeBuiltAreInvalidatedAndNeverSent() throws Exception
+   {
+      // A built site holds the node's UI tree: only its invalidation travels
+      assertEquals("asyncInvalidation", getClusterModes().get("portal.UIPortal"));
+   }
+
+   @Test
    public void testTheCachesOfDeployedResourcesStayLocal() throws Exception
    {
       Map<String, String> modes = getClusterModes();
