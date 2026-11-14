@@ -91,7 +91,10 @@ public class GenericExoCacheCreator implements ExoCacheCreator
       if (config instanceof GenericExoCacheConfig)
       {
          final GenericExoCacheConfig gConfig = (GenericExoCacheConfig)config;
-         return create(config, confBuilder, cacheGetter, gConfig.getStrategy(), gConfig.getMaxSize(),
+         // A configuration that names no strategy gets the creator's default, as a plain configuration does
+         String strategy = gConfig.getStrategy() == null || gConfig.getStrategy().isEmpty() ? defaultStrategy
+            : gConfig.getStrategy();
+         return create(config, confBuilder, cacheGetter, strategy, gConfig.getMaxSize(),
             toLifespan(gConfig.getLiveTime()), gConfig.getMaxIdle() == 0 ? defaultMaxIdle : gConfig.getMaxIdle(),
             gConfig.getWakeUpInterval() == 0 ? defaultWakeUpInterval : gConfig.getWakeUpInterval());
       }
@@ -128,7 +131,7 @@ public class GenericExoCacheCreator implements ExoCacheCreator
       {
          es = EvictionStrategy.LRU;
       }
-      confBuilder.eviction().strategy(EvictionStrategy.valueOf(strategy)).maxEntries(maxEntries).expiration()
+      confBuilder.eviction().strategy(es).maxEntries(maxEntries).expiration()
          .lifespan(lifespan).maxIdle(maxIdle).wakeUpInterval(wakeUpInterval);
       try
       {
