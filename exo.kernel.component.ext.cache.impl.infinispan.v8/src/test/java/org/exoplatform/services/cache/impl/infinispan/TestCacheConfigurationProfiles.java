@@ -25,8 +25,11 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,6 +38,9 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 import org.exoplatform.container.configuration.ConfigurationUnmarshaller;
+import org.exoplatform.container.xml.Component;
+import org.exoplatform.container.xml.Deserializer;
+import org.exoplatform.container.xml.Property;
 import org.exoplatform.services.cache.CacheMode;
 
 /**
@@ -44,6 +50,9 @@ import org.exoplatform.services.cache.CacheMode;
 public class TestCacheConfigurationProfiles
 {
    private static final Path CONFIGURATION = Path.of("..", "commons-exo-extension", "src", "main", "webapp", "WEB-INF", "conf");
+
+   private static final Path EXTENSION_CONFIGURATION =
+      Path.of("..", "commons-exo-extension", "src", "main", "webapp", "META-INF", "exo-conf", "configuration.xml");
 
    private static final Pattern PROFILES = Pattern.compile("profiles=\"([^\"]+)\"");
 
@@ -145,5 +154,38 @@ public class TestCacheConfigurationProfiles
       Matcher mode = CACHE_MODE.matcher(declaration.group(1));
       assertTrue(cache + " declares no cache mode", mode.find());
       assertEquals(cache + " cache mode", expectedMode, mode.group(2));
+   }
+
+   @Test
+   public void testTheIdeSpringCacheIsSizedByItsPropertiesOnly() throws Exception
+   {
+      assertEquals(Map.of(), getProperties("IdeSpringCacheProperties", Set.of()));
+      assertEquals(Map.of("meeds.cache.ide.widget.max", "2000", "meeds.cache.ide.widget.ttl", "-1"),
+                   getProperties("IdeSpringCacheProperties", Set.of("ide")));
+      // A declaration would be replaced in a cluster by the configuration the properties build
+      try (Stream<Path> paths = Files.walk(CONFIGURATION))
+      {
+         for (Path file : paths.filter(path -> path.getFileName().toString().startsWith("cache-configuration")).toList())
+         {
+            assertFalse(file.toString(), Files.readString(file).contains("<name>ide.widget</name>"));
+         }
+      }
+   }
+
+   private static Map<String, String> getProperties(String key, Set<String> profiles) throws Exception
+   {
+      Component component = new ConfigurationUnmarshaller(profiles).unmarshall(EXTENSION_CONFIGURATION.toUri().toURL())
+                                                                   .getComponent(key);
+      Map<String, String> values = new HashMap<>();
+      if (component != null)
+      {
+         Iterator<Property> properties = component.getInitParams().getPropertiesParam(key).getPropertyIterator();
+         while (properties.hasNext())
+         {
+            Property property = properties.next();
+            values.put(property.getName(), Deserializer.resolveString(property.getValue()));
+         }
+      }
+      return values;
    }
 }
