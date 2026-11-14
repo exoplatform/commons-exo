@@ -24,6 +24,7 @@ import java.io.Serializable;
 
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.eviction.EvictionStrategy;
 import org.infinispan.manager.DefaultCacheManager;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,7 +35,8 @@ import org.exoplatform.services.cache.ExoCacheConfig;
 import org.exoplatform.services.cache.invalidation.AsyncInvalidationExoCache;
 
 /**
- * The live time of a cache is given in seconds whatever its configuration, and Infinispan takes it in milliseconds.
+ * The live time of a cache is given in seconds whatever its configuration, and Infinispan takes it in milliseconds; a
+ * generic configuration that names no eviction strategy takes the creator's default.
  */
 public class TestGenericExoCacheCreator
 {
@@ -99,6 +101,41 @@ public class TestGenericExoCacheCreator
       assertEquals(20, cache.getLiveTime());
    }
 
+   @Test
+   public void testGenericConfigurationWithoutStrategyTakesTheDefaultStrategy() throws Exception
+   {
+      GenericExoCacheConfig config = genericConfig("no-strategy", 20);
+      config.setStrategy(null);
+
+      create(config);
+
+      assertEquals(EvictionStrategy.LRU, getStrategy("no-strategy"));
+   }
+
+   @Test
+   public void testGenericConfigurationWithoutStrategyTakesTheConfiguredDefaultStrategy() throws Exception
+   {
+      GenericExoCacheConfig config = genericConfig("empty-strategy", 20);
+      config.setStrategy("");
+      GenericExoCacheCreator creator = new GenericExoCacheCreator();
+      creator.defaultStrategy = "LIRS";
+
+      create(creator, config);
+
+      assertEquals(EvictionStrategy.LIRS, getStrategy("empty-strategy"));
+   }
+
+   @Test
+   public void testStrategyIsReadWhateverItsCase() throws Exception
+   {
+      GenericExoCacheConfig config = genericConfig("lower-case-strategy", 20);
+      config.setStrategy("lirs");
+
+      create(config);
+
+      assertEquals(EvictionStrategy.LIRS, getStrategy("lower-case-strategy"));
+   }
+
    private static GenericExoCacheConfig genericConfig(String name, long liveTime)
    {
       GenericExoCacheConfig config = new GenericExoCacheConfig();
@@ -111,11 +148,22 @@ public class TestGenericExoCacheCreator
 
    private static ExoCache<Serializable, Object> create(ExoCacheConfig config) throws Exception
    {
+      return create(new GenericExoCacheCreator(), config);
+   }
+
+   private static ExoCache<Serializable, Object> create(GenericExoCacheCreator creator, ExoCacheConfig config)
+      throws Exception
+   {
       ConfigurationBuilder builder = new ConfigurationBuilder();
-      return new GenericExoCacheCreator().create(config, builder, () -> {
+      return creator.create(config, builder, () -> {
          manager.defineConfiguration(config.getName(), builder.build());
          return manager.getCache(config.getName());
       });
+   }
+
+   private static EvictionStrategy getStrategy(String name)
+   {
+      return manager.getCache(name).getCacheConfiguration().eviction().strategy();
    }
 
    private static long getLifespan(String name)
