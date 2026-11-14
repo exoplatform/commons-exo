@@ -151,7 +151,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -177,7 +177,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationsCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -203,7 +203,27 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.WebNotificationCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.commons.WebNotificationCountCache.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>commons.WebNotificationCountByPluginCache</name>
+          <description>The Cache configuration for commons.WebNotificationCountByPluginCache</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>commons.WebNotificationCountByPluginCache</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.commons.WebNotificationCountByPluginCache.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.commons.WebNotificationCountByPluginCache.TimeToLive:600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.commons.WebNotificationCountByPluginCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -271,6 +291,50 @@
             <field name="liveTime">
               <long>${exo.cache.gamification.domain.TimeToLive:-1}</long>
             </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.domain.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param profiles="gamification">
+          <name>gamification.administrators</name>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>gamification.administrators</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.gamification.administrators.MaxNodes:10}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.gamification.administrators.TimeToLive:30}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.administrators.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>gamification.connectors</name>
+          <description>The Cache configuration for gamification.connectors</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>gamification.connectors</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.gamification.connectors.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.gamification.connectors.TimeToLive:600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.connectors.cacheMode:asyncInvalidation}</string>
+            </field>
           </object>
         </object-param>
         <object-param profiles="gamification">
@@ -285,6 +349,11 @@
             <field name="liveTime">
               <long>${exo.cache.gamification.rule.TimeToLive:-1}</long>
             </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.rule.cacheMode:asyncInvalidation}</string>
+            </field>
           </object>
         </object-param>
         <object-param profiles="gamification">
@@ -298,6 +367,11 @@
             </field>
             <field name="liveTime">
               <long>${exo.cache.gamification.realization.TimeToLive:-1}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.gamification.realization.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -322,7 +396,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.wiki.PageRenderingCache.cacheMode:replication}</string>
+              <string>${exo.cache.wiki.PageRenderingCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -347,11 +421,11 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.wiki.PageAttachmentCache.cacheMode:replication}</string>
+              <string>${exo.cache.wiki.PageAttachmentCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
-        <object-param profiles="perkstore">
+        <object-param profiles="perk-store">
           <name>perkstore.product</name>
           <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
             <field name="name">
@@ -363,9 +437,14 @@
             <field name="liveTime">
               <long>${exo.cache.perkstore.product.TimeToLive:-1}</long>
             </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.perkstore.product.cacheMode:asyncInvalidation}</string>
+            </field>
           </object>
         </object-param>
-        <object-param profiles="perkstore">
+        <object-param profiles="perk-store">
           <name>perkstore.order</name>
           <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
             <field name="name">
@@ -376,6 +455,30 @@
             </field>
             <field name="liveTime">
               <long>${exo.cache.perkstore.order.TimeToLive:-1}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.perkstore.order.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>perkstore.globalSettings</name>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>perkstore.globalSettings</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.perkstore.globalSettings.MaxNodes:10}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.perkstore.globalSettings.TimeToLive:30}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.perkstore.globalSettings.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -400,7 +503,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.user.cacheMode:replication}</string>
+              <string>${exo.cache.portal.user.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -425,7 +528,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.profile.cacheMode:replication}</string>
+              <string>${exo.cache.portal.profile.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -450,7 +553,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.membership.cacheMode:replication}</string>
+              <string>${exo.cache.portal.membership.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -476,7 +579,52 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.role.cacheMode:replication}</string>
+              <string>${exo.cache.portal.role.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>portal.UIPortal</name>
+          <description>The Cache configuration for the sites each node built</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>portal.UIPortal</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.portal.UIPortal.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.UIPortal.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.UIPortal.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.UIPortal.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>portal.coediting</name>
+          <description>The Cache configuration for portal.coediting</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>portal.coediting</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.coediting.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${meeds.coediting.lockPeriod:20}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.coediting.cacheMode:replication}</string>
             </field>
           </object>
         </object-param>
@@ -502,7 +650,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.group.cacheMode:replication}</string>
+              <string>${exo.cache.portal.group.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -519,6 +667,11 @@
             <field name="liveTime">
               <long>${exo.cache.portal.tokens.TimeToLive:86400}</long>
             </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.tokens.cacheMode:asyncInvalidation}</string>
+            </field>
           </object>
         </object-param>
         <!-- Identity Registry and Conversation State Registry -->
@@ -534,6 +687,11 @@
             </field>
             <field name="liveTime">
               <long>${exo.cache.portal.IdentityRegistry.TimeToLive:3600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.IdentityRegistry.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -584,7 +742,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.commons.SettingService:replication}</string>
+              <string>${exo.cache.commons.SettingService:asyncInvalidation}</string>
             </field>
             <field
               name="strategy"
@@ -615,7 +773,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.preferences.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.preferences.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -640,7 +798,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.mop.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.mop.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -665,7 +823,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.navigation.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.navigation.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -690,7 +848,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.site.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.site.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -715,7 +873,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.site.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.site.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -740,7 +898,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.description.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.description.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -765,7 +923,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.DescriptionLocales.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.DescriptionLocales.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -790,7 +948,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.page.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.page.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -816,7 +974,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.portal.template.cacheMode:invalidation}</string>
+              <string>${exo.cache.portal.template.cacheMode:local}</string>
             </field>
           </object>
         </object-param>
@@ -857,7 +1015,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -882,7 +1040,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentityIndexCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentityIndexCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -907,7 +1065,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ProfileCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ProfileCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -932,7 +1090,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentitiesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentitiesCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -957,7 +1115,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.IdentitiesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.IdentitiesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -984,7 +1142,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1009,7 +1167,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipFromIdentityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipFromIdentityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1034,7 +1192,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipsCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipsCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1059,7 +1217,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.RelationshipsCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.RelationshipsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1084,7 +1242,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SuggestionsCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SuggestionsCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1111,7 +1269,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivityCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivityCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1136,7 +1294,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivitiesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivitiesCountCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1161,7 +1319,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.ActivitiesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.ActivitiesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1188,7 +1346,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpaceCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpaceCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1228,7 +1386,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpaceRefCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpaceRefCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1253,7 +1411,27 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpacesCountCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpacesCountCache.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>social.SpacesCountByTemplateCache</name>
+          <description>The Cache configuration for social.SpacesCountByTemplateCache</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>social.SpacesCountByTemplateCache</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.SpacesCountByTemplateCache.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.SpacesCountByTemplateCache.TimeToLive:600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.social.SpacesCountByTemplateCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1278,7 +1456,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.SpacesCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.SpacesCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1303,7 +1481,47 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>social.metadata</name>
+          <description>The Cache configuration for social.metadata</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>social.metadata</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.metadata.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.metadata.TimeToLive:600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.social.metadata.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>social.metadataKey</name>
+          <description>The Cache configuration for social.metadataKey</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>social.metadataKey</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.social.metadataKey.MaxNodes:300}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.social.metadataKey.TimeToLive:600}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.social.metadataKey.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1328,7 +1546,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1353,7 +1571,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1379,7 +1597,7 @@
             <field
               name="cacheMode"
               profiles="cluster">
-              <string>${exo.cache.social.TranslationCache.cacheMode:replication}</string>
+              <string>${exo.cache.social.TranslationCache.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
@@ -1430,6 +1648,44 @@
               name="cacheMode"
               profiles="cluster">
               <string>${exo.cache.wallet.account.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param profiles="wallet">
+          <name>wallet.rewardSettings</name>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>wallet.rewardSettings</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.wallet.rewardSettings.MaxNodes:10}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.wallet.rewardSettings.TimeToLive:30}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.wallet.rewardSettings.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param profiles="wallet">
+          <name>wallet.addressLabels</name>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>wallet.addressLabels</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.wallet.addressLabels.MaxNodes:10}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.wallet.addressLabels.TimeToLive:30}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.wallet.addressLabels.cacheMode:asyncInvalidation}</string>
             </field>
           </object>
         </object-param>
