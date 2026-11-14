@@ -18,7 +18,10 @@
  */
 package org.exoplatform.services.cache.impl.infinispan;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +35,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 import org.exoplatform.container.configuration.ConfigurationUnmarshaller;
+import org.exoplatform.services.cache.CacheMode;
 
 /**
  * The cache configuration the extension ships, read with every profile it names, the cluster one included: an object
@@ -42,6 +46,26 @@ public class TestCacheConfigurationProfiles
    private static final Path CONFIGURATION = Path.of("..", "commons-exo-extension", "src", "main", "webapp", "WEB-INF", "conf");
 
    private static final Pattern PROFILES = Pattern.compile("profiles=\"([^\"]+)\"");
+
+   private static final Path   COMMONS_EXO_CACHES = CONFIGURATION.resolve(Path.of("commons-exo", "cache-configuration.xml"));
+
+   /**
+    * Caches holding data a shared store holds, which the cluster fixes evict on one node and expect evicted on every
+    * node: replicated, or left local, they serve stale entries on the other nodes.
+    */
+   private static final List<String> INVALIDATED_CACHES = List.of("portal.User", "portal.Profile", "portal.Membership",
+      "portal.Group", "portal.Role", "portal.UIPortal", "portal.tokens", "portal.IdentityRegistry",
+      "commons.SettingService", "commons.WebNotificationCache", "commons.WebNotificationsCache", "social.translation",
+      "gamification.administrators", "gamification.connectors", "gamification.domain", "gamification.rule",
+      "gamification.realization", "perkstore.globalSettings", "perkstore.product", "perkstore.order",
+      "wallet.rewardSettings", "wallet.addressLabels");
+
+   /**
+    * Caches holding state no store holds, which every node must read: the co-editing locks.
+    */
+   private static final List<String> REPLICATED_CACHES = List.of("portal.coediting");
+
+   private static final Pattern CACHE_MODE = Pattern.compile("name=\"cacheMode\"[^>]*>\\s*<string>\\$\\{([^:}]+):([^}]*)\\}</string>");
 
    @Test
    public void testCacheConfigurationIsReadWithEveryProfile() throws Exception
@@ -72,5 +96,54 @@ public class TestCacheConfigurationProfiles
             throw new AssertionError(file + " cannot be read with the profiles " + profiles, e);
          }
       }
+   }
+
+   /**
+    * A cache mode the kernel does not know makes the cache run local, silently: every default mode is one it knows.
+    */
+   @Test
+   public void testEveryCacheModeIsAKnownMode() throws Exception
+   {
+      for (Path file : cacheConfigurations())
+      {
+         Matcher matcher = CACHE_MODE.matcher(Files.readString(file));
+         while (matcher.find())
+         {
+            try
+            {
+               CacheMode.valueOf(matcher.group(2).toUpperCase());
+            }
+            catch (IllegalArgumentException e)
+            {
+               fail(file + ": " + matcher.group(1) + " defaults to '" + matcher.group(2) + "', which is not a cache mode");
+            }
+         }
+      }
+   }
+
+   private static List<Path> cacheConfigurations() throws Exception
+   {
+      try (Stream<Path> paths = Files.walk(CONFIGURATION))
+      {
+         return paths.filter(path -> path.getFileName().toString().startsWith("cache-configuration")).toList();
+      }
+   }
+
+   @Test
+   public void testSharedCachesTakeTheirClusterMode() throws Exception
+   {
+      String configuration = Files.readString(COMMONS_EXO_CACHES);
+      INVALIDATED_CACHES.forEach(cache -> assertClusterMode(configuration, cache, "asyncInvalidation"));
+      REPLICATED_CACHES.forEach(cache -> assertClusterMode(configuration, cache, "replication"));
+   }
+
+   private static void assertClusterMode(String configuration, String cache, String expectedMode)
+   {
+      Matcher declaration = Pattern.compile("<object-param[^>]*>\\s*<name>" + Pattern.quote(cache)
+         + "</name>(.*?)</object-param>", Pattern.DOTALL).matcher(configuration);
+      assertTrue(cache + " is not declared", declaration.find());
+      Matcher mode = CACHE_MODE.matcher(declaration.group(1));
+      assertTrue(cache + " declares no cache mode", mode.find());
+      assertEquals(cache + " cache mode", expectedMode, mode.group(2));
    }
 }
