@@ -34,6 +34,7 @@ import java.io.Serializable;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The generic {@link ExoCacheCreator} for all the expiration available in infinispan.
@@ -91,16 +92,25 @@ public class GenericExoCacheCreator implements ExoCacheCreator
       {
          final GenericExoCacheConfig gConfig = (GenericExoCacheConfig)config;
          return create(config, confBuilder, cacheGetter, gConfig.getStrategy(), gConfig.getMaxSize(),
-            gConfig.getLiveTime(), gConfig.getMaxIdle() == 0 ? defaultMaxIdle : gConfig.getMaxIdle(),
+            toLifespan(gConfig.getLiveTime()), gConfig.getMaxIdle() == 0 ? defaultMaxIdle : gConfig.getMaxIdle(),
             gConfig.getWakeUpInterval() == 0 ? defaultWakeUpInterval : gConfig.getWakeUpInterval());
       }
       else
       {
-         final long period = config.getLiveTime();
          return create(config, confBuilder, cacheGetter,
             config.getImplementation() == null ? defaultStrategy : config.getImplementation(), config.getMaxSize(),
-            period > 0 ? period * 1000 : -1, defaultMaxIdle, defaultWakeUpInterval);
+            toLifespan(config.getLiveTime()), defaultMaxIdle, defaultWakeUpInterval);
       }
+   }
+
+   /**
+    * The live time of an {@link ExoCacheConfig} is in seconds, the lifespan of an Infinispan entry in milliseconds
+    * @param liveTime the live time in seconds, the entries never expire when it is 0 or less
+    * @return the lifespan in milliseconds, -1 for no expiration
+    */
+   static long toLifespan(long liveTime)
+   {
+      return liveTime > 0 ? TimeUnit.SECONDS.toMillis(liveTime) : -1;
    }
 
    /**
@@ -158,7 +168,8 @@ public class GenericExoCacheCreator implements ExoCacheCreator
 
       public long getLiveTime()
       {
-         return cache.getCacheConfiguration().expiration().lifespan();
+         long lifespan = cache.getCacheConfiguration().expiration().lifespan();
+         return lifespan > 0 ? TimeUnit.MILLISECONDS.toSeconds(lifespan) : lifespan;
       }
 
       @Managed
