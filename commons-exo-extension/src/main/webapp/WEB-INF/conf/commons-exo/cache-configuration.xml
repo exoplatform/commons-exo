@@ -663,6 +663,28 @@
             </field>
           </object>
         </object-param>
+        <!-- The users whose conversations a node holds: written on the node only, removed on every node when the user's
+             status or memberships change, so each node drops the conversations it holds for that user -->
+        <object-param>
+          <name>portal.ConversationRegistryUsers</name>
+          <description>Cache configuration for Conversation Registry Users</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.ConversationRegistryUsers</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.ConversationRegistryUsers.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.ConversationRegistryUsers.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.ConversationRegistryUsers.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
         <!-- SettingService -->
         <object-param>
           <name>commons.SettingService</name>

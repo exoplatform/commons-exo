@@ -39,6 +39,7 @@ The table is generated from the configuration file: after a change there, run `m
 | `portal.IdentityRegistry` |  | 5000 (`exo.cache.portal.IdentityRegistry.MaxNodes`) | 3600 (`exo.cache.portal.IdentityRegistry.TimeToLive`) | asyncInvalidation (`exo.cache.portal.IdentityRegistry.cacheMode`) |
 | `portal.ConversationRegistry` |  | 5000 (`exo.cache.portal.ConversationRegistry.MaxNodes`) | 3600 (`exo.cache.portal.ConversationRegistry.TimeToLive`) | local (`exo.cache.portal.ConversationRegistry.cacheMode`) |
 | `portal.ConversationRegistryStates` |  | 5000 (`exo.cache.portal.ConversationRegistryStates.MaxNodes`) | 3600 (`exo.cache.portal.ConversationRegistryStates.TimeToLive`) | local (`exo.cache.portal.ConversationRegistryStates.cacheMode`) |
+| `portal.ConversationRegistryUsers` |  | 5000 (`exo.cache.portal.ConversationRegistryUsers.MaxNodes`) | 86400 (`exo.cache.portal.ConversationRegistryUsers.TimeToLive`) | asyncInvalidation (`exo.cache.portal.ConversationRegistryUsers.cacheMode`) |
 | `commons.SettingService` |  | 100000 (`exo.cache.commons.SettingService.MaxNodes`) | 86400 (`exo.cache.commons.SettingService.TimeToLive`) | asyncInvalidation (`exo.cache.commons.SettingService`) |
 | `portal.PortletPreferences` |  | 10000 (`exo.cache.portal.preferences.MaxNodes`) | 86400 (`exo.cache.portal.preferences.TimeToLive`) | asyncInvalidation (`exo.cache.portal.preferences.cacheMode`) |
 | `portal.NavigationNode` |  | 5000 (`exo.cache.portal.mop.MaxNodes`) | 86400 (`exo.cache.portal.mop.TimeToLive`) | asyncInvalidation (`exo.cache.portal.mop.cacheMode`) |

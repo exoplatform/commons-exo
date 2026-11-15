@@ -62,6 +62,9 @@ public class TestClusterCacheModes
                    replicated);
       assertEquals("asyncInvalidation", modes.get("social.ActivitiesCache"));
       assertEquals("asyncInvalidation", modes.get("commons.SettingService"));
+      // A user's change reaches the conversations every node holds for it
+      assertEquals("asyncInvalidation", modes.get("portal.ConversationRegistryUsers"));
+      assertEquals("local", modes.get("portal.ConversationRegistry"));
    }
 
    @Test
