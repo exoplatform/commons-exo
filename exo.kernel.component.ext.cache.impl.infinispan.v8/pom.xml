@@ -97,7 +97,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-          <argLine>@{argLine} @{surefire.argLine} -Djava.net.preferIPv4Stack=true</argLine>
+          <!-- Mirrors the add-opens of the bundle's setenv.sh (platform packaging) that the replicated values need -->
+          <argLine>@{argLine} @{surefire.argLine} -Djava.net.preferIPv4Stack=true --add-opens java.base/java.util.concurrent.locks=ALL-UNNAMED</argLine>
 					<systemProperties>
 						<!-- Avoid the firewall -->
 						<property>
