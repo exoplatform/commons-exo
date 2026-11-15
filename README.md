@@ -96,4 +96,7 @@ The table is generated from the configuration file: after a change there, run `m
 | `wallet.blockchain.transaction` |  | 300 (`exo.cache.wallet.blockchain.transaction.MaxNodes`) | 600 (`exo.cache.wallet.blockchain.transaction.TimeToLive`) | local (`exo.cache.wallet.blockchain.transaction.cacheMode`) |
 | `wallet.blockchain.transactionReceipt` |  | 300 (`exo.cache.wallet.blockchain.transactionReceipt.MaxNodes`) | 600 (`exo.cache.wallet.blockchain.transactionReceipt.TimeToLive`) | local (`exo.cache.wallet.blockchain.transactionReceipt.cacheMode`) |
 | `portal.coediting` |  | 300 (`exo.cache.portal.coediting.MaxNodes`) | 20 (`meeds.coediting.lockPeriod`) | replication (`exo.cache.portal.coediting.cacheMode`) |
+| `otp.email` |  | 1000 (`exo.cache.otp.email.MaxNodes`) | 86400 (`exo.cache.otp.email.TimeToLive`) | replication (`exo.cache.otp.email.cacheMode`) |
+| `otp.email.sendLock` |  | 1000 (`exo.cache.otp.email.sendLock.MaxNodes`) | 60 (`meeds.apiKey.otp.email.sendInterval`) | replication (`exo.cache.otp.email.sendLock.cacheMode`) |
+| `otp.tentatives` |  | 1000 (`exo.cache.otp.tentatives.MaxNodes`) | 86400 (`exo.cache.otp.tentatives.TimeToLive`) | replication (`exo.cache.otp.tentatives.cacheMode`) |
 <!-- caches:end -->

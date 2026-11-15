@@ -1999,6 +1999,69 @@
             </field>
           </object>
         </object-param>
+        <!-- The one-time codes, their resend delay and the attempts counted against them are state no store holds,
+             checked on whichever node serves the next request: replicated. Each entry carries the expiry its service
+             reads from its own properties: the lifetime here, in seconds, only bounds how long an entry stays -->
+        <object-param>
+          <name>otp.email</name>
+          <description>The Cache configuration for otp.email</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.email</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.email.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.otp.email.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.cacheMode:replication}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>otp.email.sendLock</name>
+          <description>The Cache configuration for otp.email.sendLock</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.email.sendLock</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.email.sendLock.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${meeds.apiKey.otp.email.sendInterval:60}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.sendLock.cacheMode:replication}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>otp.tentatives</name>
+          <description>The Cache configuration for otp.tentatives</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.tentatives</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.tentatives.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.otp.tentatives.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.tentatives.cacheMode:replication}</string>
+            </field>
+          </object>
+        </object-param>
       </init-params>
     </component-plugin>
   </external-component-plugins>

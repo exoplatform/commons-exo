@@ -54,7 +54,12 @@ public class TestClusterCacheModes
          }
       });
 
-      assertEquals(Set.of("commons.UserStateService", "portal.coediting"), replicated);
+      assertEquals(Set.of("commons.UserStateService",
+                          "otp.email",
+                          "otp.email.sendLock",
+                          "otp.tentatives",
+                          "portal.coediting"),
+                   replicated);
       assertEquals("asyncInvalidation", modes.get("social.ActivitiesCache"));
       assertEquals("asyncInvalidation", modes.get("commons.SettingService"));
    }
