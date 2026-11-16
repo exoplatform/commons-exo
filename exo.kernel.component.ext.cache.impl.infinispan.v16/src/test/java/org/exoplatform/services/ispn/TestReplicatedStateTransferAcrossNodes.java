@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 
+import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.container.configuration.ConfigurationManager;
@@ -86,6 +87,8 @@ public class TestReplicatedStateTransferAcrossNodes
             System.clearProperty(name);
          }
       }
+      // The partition name is read through the property cache: drop the values set here for the tests that follow
+      PropertyManager.refresh();
    }
 
    @Test
