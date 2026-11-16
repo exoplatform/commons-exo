@@ -57,6 +57,7 @@ public class TestClusterCacheModes
       assertEquals(Set.of("commons.UserStateService",
                           "otp.email",
                           "otp.email.sendLock",
+                          "otp.emailChange.tentatives",
                           "otp.tentatives",
                           "portal.coediting"),
                    replicated);
