@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
@@ -32,8 +33,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
+import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StateTransferConfiguration;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.junit.After;
@@ -61,6 +64,12 @@ public class TestReplicatedStateTransferAcrossNodes
    private static final String ASYNC_TEMPLATE = "jar:/conf/cache/infinispan/cluster/cache-async-config.xml";
 
    private static final long   TIMEOUT        = 30_000;
+
+   /** How long the serialization of {@link SlowToSerialize} takes, as a node sends it in the state of a cache. */
+   private static final long   SLOW_SERIALIZATION_MILLIS = 3_000;
+
+   /** The state-transfer timeout the nodes give the caches they create, when a test sets one. */
+   private volatile Long       stateTransferTimeout;
 
    private final Map<String, String> previousProperties = new HashMap<>();
 
@@ -165,11 +174,67 @@ public class TestReplicatedStateTransferAcrossNodes
       }
    }
 
+   @Test
+   public void testANodeServesACacheOnlyOnceItsInitialStateArrived() throws Exception
+   {
+      ExoCache<Serializable, Object> first = nodeA.createCache(config("otp.wait", CacheMode.REPLICATION));
+      first.put("slow", new SlowToSerialize());
+
+      ExoCache<Serializable, Object> second = nodeB.createCache(config("otp.wait", CacheMode.REPLICATION));
+
+      // The state takes SLOW_SERIALIZATION_MILLIS to leave node-a. The size is local: served before the state arrived,
+      // the cache would count nothing (a read would not tell, it fetches a missing entry from node-a)
+      assertEquals(1, second.getCacheSize());
+   }
+
+   @Test
+   public void testANodeServesACacheWhoseInitialStateTransferTimesOutAndReceivesTheEntriesLater() throws Exception
+   {
+      stateTransferTimeout = 1_000L;
+      ExoCache<Serializable, Object> first = nodeA.createCache(config("otp.timeout", CacheMode.REPLICATION));
+      first.put("code", "123456");
+      first.put("slow", new SlowToSerialize());
+
+      // The transfer outlasts the timeout: the cache starts all the same, before the state arrived, and serves
+      long start = System.nanoTime();
+      ExoCache<Serializable, Object> second = nodeB.createCache(config("otp.timeout", CacheMode.REPLICATION));
+      assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) < SLOW_SERIALIZATION_MILLIS);
+      assertTrue(second.getCacheSize() < 2);
+      second.put("new-code", "654321");
+      assertEquals("654321", second.get("new-code"));
+
+      // The transfer goes on in the background: node-a's two entries then count locally
+      waitFor("the entries of node-a reach node-b", () -> second.getCacheSize() >= 3);
+   }
+
+   /**
+    * A cached value whose serialization, as a node sends it in the state of a cache, takes
+    * {@link #SLOW_SERIALIZATION_MILLIS}.
+    */
+   static final class SlowToSerialize implements Serializable
+   {
+      private static final long serialVersionUID = 1L;
+
+      private void writeObject(ObjectOutputStream out) throws IOException
+      {
+         try
+         {
+            Thread.sleep(SLOW_SERIALIZATION_MILLIS);
+         }
+         catch (InterruptedException e)
+         {
+            Thread.currentThread().interrupt();
+         }
+         out.defaultWriteObject();
+      }
+   }
+
    private void assertTransferred(String name, CacheMode mode) throws Exception
    {
       ExoCache<Serializable, Object> first = nodeA.createCache(config(name, mode));
       assertTrue(name, stateTransfer(first).fetchInMemoryState());
-      assertTrue(name, stateTransfer(first).awaitInitialTransfer());
+      // The factory waits for the transfer, not Infinispan's start, which would fail and keep the cache past a timeout
+      assertFalse(name, stateTransfer(first).awaitInitialTransfer());
       first.put("code", "123456");
 
       // The other node creates the cache after the entry exists, as at its first use of the cache
@@ -209,7 +274,19 @@ public class TestReplicatedStateTransferAcrossNodes
                                                             SYNC_TEMPLATE,
                                                             ASYNC_TEMPLATE,
                                                             container.getComponentInstanceOfType(ConfigurationManager.class),
-                                                            null);
+                                                            null)
+      {
+         @Override
+         protected void configureStateTransfer(ConfigurationBuilder confBuilder)
+         {
+            super.configureStateTransfer(confBuilder);
+            Long timeout = stateTransferTimeout;
+            if (timeout != null)
+            {
+               confBuilder.clustering().stateTransfer().timeout(timeout);
+            }
+         }
+      };
       factories.add(factory);
       // Starts the asynchronous cache manager of this node
       factory.createCache(config("warm-up", CacheMode.ASYNCINVALIDATION));

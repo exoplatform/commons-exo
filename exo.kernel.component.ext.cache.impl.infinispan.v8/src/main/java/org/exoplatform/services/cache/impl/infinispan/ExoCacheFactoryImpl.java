@@ -43,7 +43,12 @@ import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.configuration.parsing.ParserRegistry;
 import org.infinispan.eviction.EvictionStrategy;
 import org.infinispan.jmx.MBeanServerLookup;
+import org.infinispan.factories.ComponentRegistry;
 import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.remoting.transport.Address;
+import org.infinispan.statetransfer.StateTransferManager;
+import org.infinispan.topology.CacheTopology;
+import org.infinispan.topology.LocalTopologyManager;
 import org.picocontainer.Startable;
 
 import java.io.InputStream;
@@ -55,6 +60,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.MBeanServer;
 
@@ -81,6 +87,11 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    public static final String REPLICATED_STATE_TRANSFER = "exo.cache.cluster.replication.statetransfer";
 
    private static final String CACHE_CONFIG_TEMPLATE_KEY = "cache.config.template";
+
+   /**
+    * How often the factory checks whether a cache it started received its initial state.
+    */
+   private static final long STATE_TRANSFER_POLL_MILLIS = 100;
 
    /**
     * The initial parameter key that defines the full path of the optional async configuration template
@@ -310,6 +321,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
       try
       {
          final ConfigurationBuilder confBuilder = new ConfigurationBuilder();
+         boolean templateStateTransfer = false;
          if (customConfig != null)
          {
             // A custom configuration has been set
@@ -373,11 +385,13 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             else if (!config.isInvalidated())
             {
                configureStateTransfer(confBuilder);
+               templateStateTransfer = true;
             }
          }
          // Reset the configuration to avoid conflicts
          resetConfiguration(confBuilder);
          final ExoCacheCreator creator = getExoCacheCreator(config);
+         final boolean awaitStateTransfer = templateStateTransfer;
          // Create the cache
          eXoCache = creator.create(config, confBuilder, new Callable<Cache<Serializable, Object>>()
          {
@@ -385,7 +399,12 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             {
                cacheManager.defineConfiguration(region, confBuilder.build());
                // create and start the cache
-               return cacheManager.getCache(region);
+               Cache<Serializable, Object> cache = cacheManager.getCache(region);
+               if (awaitStateTransfer)
+               {
+                  waitForInitialStateTransfer(region, cache);
+               }
+               return cache;
             }
          });
       }
@@ -487,17 +506,102 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
     * cluster templates do not transfer it by default, and a cache invalidated rather than replicated holds data that
     * each node loads from its store, which a transfer would only copy for nothing.
     * <p>
-    * The node waits for the transfer up to the template's state-transfer timeout, beyond which the cache does not
-    * start. {@link #REPLICATED_STATE_TRANSFER} set to {@code false} keeps the template instead: the cache starts at
-    * once, empty.
+    * The cache starts without waiting for the transfer, which Infinispan would do inside the start: past the
+    * state-transfer timeout it fails the start and keeps the failed cache, which every later lookup of the region
+    * returns. The factory waits instead ({@link #waitForInitialStateTransfer}), up to the same timeout, and past it
+    * serves the cache while the transfer goes on: until it ends, a read of an entry the node did not receive yet is
+    * fetched from another node, and the local size and listings miss those entries.
+    * {@link #REPLICATED_STATE_TRANSFER} set to {@code false} keeps the template instead: the cache starts at once,
+    * empty.
     * @param confBuilder the configuration of a replicated cache
     */
    protected void configureStateTransfer(ConfigurationBuilder confBuilder)
    {
       if (!"false".equalsIgnoreCase(PropertyManager.getProperty(REPLICATED_STATE_TRANSFER)))
       {
-         confBuilder.clustering().stateTransfer().fetchInMemoryState(true).awaitInitialTransfer(true);
+         confBuilder.clustering().stateTransfer().fetchInMemoryState(true).awaitInitialTransfer(false);
       }
+   }
+
+   /**
+    * Waits until the node is a reader of the cache, which is when Infinispan considers its initial state transfer
+    * complete, for up to the cache's state-transfer timeout, as Infinispan does: not at all while rebalancing is
+    * disabled, since the node does not become a reader then. Past the timeout a warning names the region, and the
+    * cache is served while the transfer goes on: a read of an entry not received yet is fetched from another node,
+    * and the local size and listings miss those entries until the transfer ends.
+    * @param region the name of the cache
+    * @param cache the started cache
+    * @return {@code true} when the transfer completed within the timeout, or the cache transfers nothing
+    */
+   static boolean waitForInitialStateTransfer(String region, Cache<Serializable, Object> cache)
+   {
+      Configuration configuration = cache.getCacheConfiguration();
+      if (!configuration.clustering().cacheMode().isClustered()
+         || !configuration.clustering().stateTransfer().fetchInMemoryState())
+      {
+         return true;
+      }
+      ComponentRegistry registry = cache.getAdvancedCache().getComponentRegistry();
+      if (!isRebalancingEnabled(registry, region))
+      {
+         return true;
+      }
+      StateTransferManager stateTransferManager = registry.getStateTransferManager();
+      Address self = cache.getCacheManager().getAddress();
+      long timeout = configuration.clustering().stateTransfer().timeout();
+      long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeout);
+      while (!isReader(stateTransferManager, self))
+      {
+         if (cache.getStatus().isTerminated() || cache.getStatus().isStopping())
+         {
+            return false;
+         }
+         if (System.nanoTime() - deadline >= 0)
+         {
+            LOG.warn("The initial state transfer of the cache '" + region + "' did not complete within the"
+               + " state-transfer timeout (" + timeout + " ms): the node serves the cache while the transfer goes on;"
+               + " until it ends, a read of an entry not received yet is fetched from another node, and the local"
+               + " size and listings miss those entries.");
+            return false;
+         }
+         try
+         {
+            Thread.sleep(STATE_TRANSFER_POLL_MILLIS);
+         }
+         catch (InterruptedException e)
+         {
+            Thread.currentThread().interrupt();
+            LOG.debug("Interrupted while waiting for the initial state transfer of the cache '" + region + "'");
+            return false;
+         }
+      }
+      return true;
+   }
+
+   /**
+    * Asks the coordinator once, as Infinispan does before its own wait: with rebalancing disabled a joining node
+    * never becomes a reader, and Infinispan counts the initial transfer complete at once.
+    */
+   private static boolean isRebalancingEnabled(ComponentRegistry registry, String region)
+   {
+      try
+      {
+         LocalTopologyManager topologyManager = registry.getComponent(LocalTopologyManager.class);
+         return topologyManager == null || topologyManager.isRebalancingEnabled();
+      }
+      catch (Exception e)
+      {
+         LOG.debug("Could not tell whether rebalancing is enabled for the cache '" + region + "': waiting for it", e);
+         return true;
+      }
+   }
+
+   private static boolean isReader(StateTransferManager stateTransferManager, Address self)
+   {
+      CacheTopology topology = stateTransferManager == null ? null : stateTransferManager.getCacheTopology();
+      return stateTransferManager == null
+         || topology != null && topology.getReadConsistentHash() != null
+            && topology.getReadConsistentHash().getMembers().contains(self);
    }
 
    /**
