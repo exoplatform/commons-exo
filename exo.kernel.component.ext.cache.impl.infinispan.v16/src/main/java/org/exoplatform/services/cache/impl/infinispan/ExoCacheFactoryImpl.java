@@ -311,6 +311,10 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
                // The cache is local
                confBuilder.clustering().cacheMode(CacheMode.LOCAL);
             }
+            else if (!config.isInvalidated())
+            {
+               configureStateTransfer(confBuilder);
+            }
          }
          // Reset the configuration to avoid conflicts
          resetConfiguration(confBuilder);
@@ -466,6 +470,18 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
       if (LOG.isInfoEnabled())
          LOG.info("The cache '" + config.getName() + "' will be created with '" + creator.getClass() + "'.");
       return creator;
+   }
+
+   /**
+    * A replicated cache holds state that no store holds: a node that creates it, at its first use or when it rejoins
+    * the cluster, receives the entries the other nodes hold and waits for them before it serves its first read. The
+    * cluster templates do not transfer it by default, and a cache invalidated rather than replicated holds data that
+    * each node loads from its store, which a transfer would only copy for nothing.
+    * @param confBuilder the configuration of a replicated cache
+    */
+   protected void configureStateTransfer(ConfigurationBuilder confBuilder)
+   {
+      confBuilder.clustering().stateTransfer().fetchInMemoryState(true).awaitInitialTransfer(true);
    }
 
    /**
