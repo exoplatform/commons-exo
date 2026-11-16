@@ -68,13 +68,13 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    private static final Log LOG = ExoLogger.getLogger(ExoCacheFactoryImpl.class);
 
    /**
-    * The initial parameter key that defines the full path of the configuration template
-    */
-   /**
     * Set to {@code false} to start a replicated cache built from a template without waiting for its peers' entries.
     */
    public static final String REPLICATED_STATE_TRANSFER = "exo.cache.cluster.replication.statetransfer";
 
+   /**
+    * The initial parameter key that defines the full path of the configuration template
+    */
    private static final String CACHE_CONFIG_TEMPLATE_KEY = "cache.config.template";
 
    /**
