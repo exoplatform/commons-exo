@@ -121,6 +121,23 @@ public class TestReplicatedStateTransferAcrossNodes
       assertFalse(stateTransfer(cache).fetchInMemoryState());
    }
 
+   @Test
+   public void testAReplicatedCacheKeepsTheTemplateWhenTheTransferIsTurnedOff() throws Exception
+   {
+      System.setProperty(ExoCacheFactoryImpl.REPLICATED_STATE_TRANSFER, "false");
+      PropertyManager.refresh();
+      try
+      {
+         ExoCache<Serializable, Object> cache = node1.createCache(config("otp.off", CacheMode.REPLICATION));
+         assertFalse(stateTransfer(cache).fetchInMemoryState());
+      }
+      finally
+      {
+         System.clearProperty(ExoCacheFactoryImpl.REPLICATED_STATE_TRANSFER);
+         PropertyManager.refresh();
+      }
+   }
+
    private static void assertTransferred(String name, CacheMode mode) throws Exception
    {
       ExoCache<Serializable, Object> first = node1.createCache(config(name, mode));
