@@ -100,4 +100,5 @@ The table is generated from the configuration file: after a change there, run `m
 | `otp.email` |  | 1000 (`exo.cache.otp.email.MaxNodes`) | 86400 (`exo.cache.otp.email.TimeToLive`) | replication (`exo.cache.otp.email.cacheMode`) |
 | `otp.email.sendLock` |  | 1000 (`exo.cache.otp.email.sendLock.MaxNodes`) | 60 (`meeds.apiKey.otp.email.sendInterval`) | replication (`exo.cache.otp.email.sendLock.cacheMode`) |
 | `otp.tentatives` |  | 1000 (`exo.cache.otp.tentatives.MaxNodes`) | 86400 (`exo.cache.otp.tentatives.TimeToLive`) | replication (`exo.cache.otp.tentatives.cacheMode`) |
+| `otp.emailChange.tentatives` |  | 1000 (`exo.cache.otp.emailChange.tentatives.MaxNodes`) | 86400 (`exo.cache.otp.emailChange.tentatives.TimeToLive`) | replication (`exo.cache.otp.emailChange.tentatives.cacheMode`) |
 <!-- caches:end -->
