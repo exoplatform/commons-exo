@@ -725,6 +725,28 @@
             </field>
           </object>
         </object-param>
+        <!-- The users whose conversations a node holds: written on the node only, removed on every node when the user's
+             status or memberships change, so each node drops the conversations it holds for that user -->
+        <object-param>
+          <name>portal.ConversationRegistryUsers</name>
+          <description>Cache configuration for Conversation Registry Users</description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name">
+              <string>portal.ConversationRegistryUsers</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.portal.ConversationRegistryUsers.MaxNodes:5000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.portal.ConversationRegistryUsers.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.portal.ConversationRegistryUsers.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
         <!-- SettingService -->
         <object-param>
           <name>commons.SettingService</name>
@@ -1736,6 +1758,84 @@
               name="cacheMode"
               profiles="cluster">
               <string>${exo.cache.social.profileSettingIdsByName.cacheMode:asyncInvalidation}</string>
+            </field>
+          </object>
+        </object-param>
+        <!-- The one-time codes, their resend delay and the attempts counted against them are state no store holds,
+             checked on whichever node serves the next request: replicated. Each entry carries the expiry its service
+             reads from its own properties: the lifetime here, in seconds, only bounds how long an entry stays -->
+        <object-param>
+          <name>otp.email</name>
+          <description>The Cache configuration for otp.email</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.email</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.email.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.otp.email.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.cacheMode:replication}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>otp.email.sendLock</name>
+          <description>The Cache configuration for otp.email.sendLock</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.email.sendLock</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.sendLock.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.email.sendLock.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${meeds.apiKey.otp.email.sendInterval:60}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.email.sendLock.cacheMode:replication}</string>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>otp.tentatives</name>
+          <description>The Cache configuration for otp.tentatives</description>
+          <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
+            <field name="name">
+              <string>otp.tentatives</string>
+            </field>
+            <field
+              name="strategy"
+              profiles="cluster">
+              <string>${exo.cache.otp.tentatives.strategy:LIRS}</string>
+            </field>
+            <field name="maxSize">
+              <int>${exo.cache.otp.tentatives.MaxNodes:1000}</int>
+            </field>
+            <field name="liveTime">
+              <long>${exo.cache.otp.tentatives.TimeToLive:86400}</long>
+            </field>
+            <field
+              name="cacheMode"
+              profiles="cluster">
+              <string>${exo.cache.otp.tentatives.cacheMode:replication}</string>
             </field>
           </object>
         </object-param>

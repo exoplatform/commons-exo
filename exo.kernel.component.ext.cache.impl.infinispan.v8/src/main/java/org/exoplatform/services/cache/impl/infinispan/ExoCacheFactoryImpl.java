@@ -18,6 +18,7 @@
  */
 package org.exoplatform.services.cache.impl.infinispan;
 
+import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.configuration.ConfigurationManager;
 import org.exoplatform.container.xml.InitParams;
@@ -74,6 +75,11 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    /**
     * The initial parameter key that defines the full path of the configuration template
     */
+   /**
+    * Set to {@code false} to start a replicated cache built from a template without waiting for its peers' entries.
+    */
+   public static final String REPLICATED_STATE_TRANSFER = "exo.cache.cluster.replication.statetransfer";
+
    private static final String CACHE_CONFIG_TEMPLATE_KEY = "cache.config.template";
 
    /**
@@ -364,6 +370,10 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
                // The cache is local
                confBuilder.clustering().cacheMode(CacheMode.LOCAL);
             }
+            else if (!config.isInvalidated())
+            {
+               configureStateTransfer(confBuilder);
+            }
          }
          // Reset the configuration to avoid conflicts
          resetConfiguration(confBuilder);
@@ -469,6 +479,25 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
       if (LOG.isInfoEnabled())
          LOG.info("The cache '" + config.getName() + "' will be created with '" + creator.getClass() + "'.");
       return creator;
+   }
+
+   /**
+    * A replicated cache holds state that no store holds: a node that creates it, at its first use or when it rejoins
+    * the cluster, receives the entries the other nodes hold and waits for them before it serves its first read. The
+    * cluster templates do not transfer it by default, and a cache invalidated rather than replicated holds data that
+    * each node loads from its store, which a transfer would only copy for nothing.
+    * <p>
+    * The node waits for the transfer up to the template's state-transfer timeout, beyond which the cache does not
+    * start. {@link #REPLICATED_STATE_TRANSFER} set to {@code false} keeps the template instead: the cache starts at
+    * once, empty.
+    * @param confBuilder the configuration of a replicated cache
+    */
+   protected void configureStateTransfer(ConfigurationBuilder confBuilder)
+   {
+      if (!"false".equalsIgnoreCase(PropertyManager.getProperty(REPLICATED_STATE_TRANSFER)))
+      {
+         confBuilder.clustering().stateTransfer().fetchInMemoryState(true).awaitInitialTransfer(true);
+      }
    }
 
    /**

@@ -78,7 +78,7 @@ public class TestShippedCacheConfiguration
    /**
     * The caches the file declares with every profile it names: a declaration the reading drops is not created either.
     */
-   private static final int     DECLARED_CACHES    = 70;
+   private static final int     DECLARED_CACHES    = 74;
 
    private final Map<String, String> previousProperties = new HashMap<>();
 
