@@ -532,8 +532,9 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
     * <p>
     * The wait runs on the thread that creates the cache, which the cache service does at the first lookup of the
     * region: often a request thread, a code sign-in for {@code otp.tentatives}. While a peer does not answer, that
-    * request waits up to {@code exo.cache.cluster.statetransfer.timeout} (240 s in the cluster templates), and so does
-    * every other request that looks the region up meanwhile.
+    * request waits up to the state-transfer timeout of the cache's template, and so does every other request that looks
+    * the region up meanwhile: {@code exo.cache.cluster.statetransfer.timeout} for the synchronous cluster template,
+    * {@code exo.cache.async.cluster.statetransfer.timeout} for the asynchronous one, 240 s by default.
     * @param region the name of the cache
     * @param cache the started cache
     * @return {@code true} when the transfer completed within the timeout, or the cache transfers nothing

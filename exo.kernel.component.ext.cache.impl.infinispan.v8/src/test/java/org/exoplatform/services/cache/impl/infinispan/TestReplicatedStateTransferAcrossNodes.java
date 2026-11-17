@@ -63,6 +63,14 @@ public class TestReplicatedStateTransferAcrossNodes
 
    private static final String ASYNC_TEMPLATE = "jar:/conf/cache/infinispan/cluster/cache-async-config.xml";
 
+   private static final String SYNC_TIMEOUT = "exo.cache.cluster.statetransfer.timeout";
+
+   private static final String ASYNC_TIMEOUT = "exo.cache.async.cluster.statetransfer.timeout";
+
+   private static final long SYNC_TIMEOUT_MILLIS = 230001;
+
+   private static final long ASYNC_TIMEOUT_MILLIS = 230002;
+
    private static final long   TIMEOUT        = 30_000;
 
    /** How long the serialization of {@link SlowToSerialize} takes, as a node sends it in the state of a cache. */
@@ -92,6 +100,8 @@ public class TestReplicatedStateTransferAcrossNodes
       setProperty("exo.cluster.partition.name", "state-transfer-" + portA);
       setProperty("exo.service.cluster.jgroups.tcpping.initial_hosts", "localhost[" + portA + "],localhost[" + portB + "]");
       setProperty("exo.service.cluster.jgroups.tcpping.port_range", "3");
+      setProperty(SYNC_TIMEOUT, String.valueOf(SYNC_TIMEOUT_MILLIS));
+      setProperty(ASYNC_TIMEOUT, String.valueOf(ASYNC_TIMEOUT_MILLIS));
       nodeA = startNode("node-a", portA);
       nodeB = startNode("node-b", portB);
       waitFor("the two nodes see each other", () -> factories.stream().allMatch(f -> members(f, "cacheManager") == 2
@@ -138,6 +148,15 @@ public class TestReplicatedStateTransferAcrossNodes
    public void testAnAsynchronouslyReplicatedCacheTransfersItsEntriesToANodeThatCreatesItLater() throws Exception
    {
       assertTransferred("otp.async", CacheMode.ASYNCREPLICATION);
+   }
+
+   @Test
+   public void testEachClusterTemplateBoundsTheInitialStateTransferByItsOwnProperty() throws Exception
+   {
+      assertEquals(SYNC_TIMEOUT_MILLIS,
+                   stateTransfer(nodeA.createCache(config("timeout.sync", CacheMode.REPLICATION))).timeout());
+      assertEquals(ASYNC_TIMEOUT_MILLIS,
+                   stateTransfer(nodeA.createCache(config("timeout.async", CacheMode.ASYNCREPLICATION))).timeout());
    }
 
    @Test
