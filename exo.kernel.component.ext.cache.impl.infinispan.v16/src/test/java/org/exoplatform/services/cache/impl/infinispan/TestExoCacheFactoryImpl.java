@@ -24,6 +24,7 @@ import junit.framework.TestCase;
 
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -43,6 +44,9 @@ import org.exoplatform.services.cache.ExoCacheInitException;
 import org.exoplatform.services.cache.impl.CacheServiceImpl;
 import org.exoplatform.services.cache.impl.infinispan.TestExoCacheCreator.TestExoCache;
 import org.exoplatform.services.cache.invalidation.AsyncInvalidationExoCache;
+import org.infinispan.commons.CacheConfigurationException;
+import org.infinispan.commons.CacheException;
+import org.infinispan.commons.TimeoutException;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.lifecycle.ComponentStatus;
 import org.infinispan.manager.DefaultCacheManager;
@@ -121,6 +125,35 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.RUNNING, asyncCacheManager.getStatus());
       factory.stop();
       assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+   }
+
+   public void testACacheManagerThatFailsToStopDoesNotKeepTheOthersRunning() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, template,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      Field mainField = ExoCacheFactoryImpl.class.getDeclaredField("cacheManager");
+      mainField.setAccessible(true);
+      DefaultCacheManager mainCacheManager = (DefaultCacheManager)mainField.get(factory);
+      // The main cache manager, stopped first, fails to stop
+      mainField.set(factory, new DefaultCacheManager(false)
+      {
+         @Override
+         public void stop()
+         {
+            throw new IllegalStateException("Cannot stop");
+         }
+      });
+      Field asyncField = ExoCacheFactoryImpl.class.getDeclaredField("asyncCacheManager");
+      asyncField.setAccessible(true);
+      DefaultCacheManager asyncCacheManager = (DefaultCacheManager)asyncField.get(factory);
+
+      factory.stop();
+
+      assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+      mainCacheManager.stop();
    }
 
    public void testACacheConfiguredByItsModeOnlyIsInvalidatedOverAnAsyncReplicatedCache() throws Exception
@@ -283,5 +316,18 @@ public class TestExoCacheFactoryImpl extends TestCase
 
       aCache1.cache.stop();
       aCache2.cache.stop();
+   }
+
+   public void testOnlyTheInitialStateTransferTimeoutStartsTheRegionAgain()
+   {
+      // As getCache throws it for a cache whose initial state transfer timed out: bare, a CacheException that
+      // Infinispan does not wrap
+      assertTrue(ExoCacheFactoryImpl.isStateTransferTimeout(
+         new TimeoutException("ISPN000658: Initial state transfer timed out for cache otp on node3")));
+      // As a join request that the coordinator did not answer in time reaches the factory
+      assertFalse(ExoCacheFactoryImpl.isStateTransferTimeout(new CacheConfigurationException("ISPN000659: failed to start",
+         new CompletionException(new CacheException("ISPN000476: Timed out waiting for responses for request 10",
+            new TimeoutException("ISPN000476: Timed out waiting for responses for request 10"))))));
+      assertFalse(ExoCacheFactoryImpl.isStateTransferTimeout(new CacheException("ISPN000659: failed to start")));
    }
 }

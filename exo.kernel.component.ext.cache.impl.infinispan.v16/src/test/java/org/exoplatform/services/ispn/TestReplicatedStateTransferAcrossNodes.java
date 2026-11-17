@@ -20,9 +20,12 @@ package org.exoplatform.services.ispn;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 
@@ -36,6 +39,7 @@ import org.exoplatform.services.cache.ExoCacheConfig;
 import org.exoplatform.services.cache.impl.infinispan.AbstractExoCache;
 import org.exoplatform.services.cache.impl.infinispan.ExoCacheFactoryImpl;
 import org.infinispan.AdvancedCache;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StateTransferConfiguration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -54,14 +58,23 @@ public class TestReplicatedStateTransferAcrossNodes
 
    private static final String ASYNC_TEMPLATE = "jar:/conf/cache/infinispan/cluster/cache-async-config.xml";
 
+   /** The state-transfer and remote timeouts of the node that joins late: a join request is answered well within it. */
+   private static final long STATE_TRANSFER_TIMEOUT_MILLIS = 1000L;
+
+   /** How long the serialization of {@link SlowToSerialize} takes: three times the timeout it must outlast. */
+   private static final long SLOW_SERIALIZATION_MILLIS = 3 * STATE_TRANSFER_TIMEOUT_MILLIS;
+
    private static ExoCacheFactoryImpl node1;
 
    private static ExoCacheFactoryImpl node2;
 
+   private static int[] ports;
+
    @BeforeClass
    public static void startNodes() throws Exception
    {
-      int[] ports = TestSharedJGroupsTransport.freePorts(2);
+      // The third port is the one of a node that a test starts itself
+      ports = TestSharedJGroupsTransport.freePorts(3);
       System.setProperty("exo.cluster.partition.name", "state-transfer-test");
       node1 = startNode(ports, 0, "node1");
       node2 = startNode(ports, 1, "node2");
@@ -138,6 +151,41 @@ public class TestReplicatedStateTransferAcrossNodes
       }
    }
 
+   @Test
+   public void testAReplicatedCacheStartsWithoutTheTransferredEntriesWhenTheStateTransferTimesOut() throws Exception
+   {
+      ExoCache<Serializable, Object> first = node1.createCache(config("otp.timeout", CacheMode.REPLICATION));
+      first.put("code", "123456");
+      // The state that node1 sends holds an entry whose serialization outlasts the timeout of the joining node, while
+      // its join request is answered well within it: the cache must still start, and serve
+      first.put("slow", new SlowToSerialize());
+
+      ExoCacheFactoryImpl slowNode = startNode(ports, 2, "node3", STATE_TRANSFER_TIMEOUT_MILLIS);
+      try
+      {
+         ExoCache<Serializable, Object> late = slowNode.createCache(config("otp.timeout", CacheMode.REPLICATION));
+         assertNotNull(late);
+         assertTrue(stateTransfer(late).fetchInMemoryState());
+         assertFalse(stateTransfer(late).awaitInitialTransfer());
+         // A read is local on a replicated cache: it does not fail whether or not the entry arrived yet
+         late.get("code");
+         // The started cache serves: what this node writes, it reads back
+         late.put("new-code", "654321");
+         assertEquals("654321", late.get("new-code"));
+         // A new transfer fills the restarted cache in the background: the entries of node1 arrive once their state is sent
+         long deadline = System.currentTimeMillis() + 5 * SLOW_SERIALIZATION_MILLIS;
+         while (late.get("code") == null && System.currentTimeMillis() < deadline)
+         {
+            Thread.sleep(100);
+         }
+         assertEquals("123456", late.get("code"));
+      }
+      finally
+      {
+         slowNode.stop();
+      }
+   }
+
    private static void assertTransferred(String name, CacheMode mode) throws Exception
    {
       ExoCache<Serializable, Object> first = node1.createCache(config(name, mode));
@@ -169,7 +217,35 @@ public class TestReplicatedStateTransferAcrossNodes
       return config;
    }
 
+   /**
+    * A cached value whose serialization, as a node sends it in the state of a cache, outlasts the state-transfer
+    * timeout of the node that receives it. A put on a cache that no other node holds yet does not serialize it.
+    */
+   static final class SlowToSerialize implements Serializable
+   {
+      private static final long serialVersionUID = 1L;
+
+      private void writeObject(ObjectOutputStream out) throws IOException
+      {
+         try
+         {
+            Thread.sleep(SLOW_SERIALIZATION_MILLIS);
+         }
+         catch (InterruptedException e)
+         {
+            Thread.currentThread().interrupt();
+         }
+         out.defaultWriteObject();
+      }
+   }
+
    private static ExoCacheFactoryImpl startNode(int[] ports, int index, String nodeName) throws Exception
+   {
+      return startNode(ports, index, nodeName, null);
+   }
+
+   private static ExoCacheFactoryImpl startNode(int[] ports, int index, String nodeName, Long stateTransferTimeout)
+      throws Exception
    {
       // The stack and the node name are read as the factory starts its cache managers
       TestSharedJGroupsTransport.stack(ports[index], ports);
@@ -178,6 +254,18 @@ public class TestReplicatedStateTransferAcrossNodes
       return new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class),
                                      SYNC_TEMPLATE,
                                      ASYNC_TEMPLATE,
-                                     container.getComponentInstanceOfType(ConfigurationManager.class));
+                                     container.getComponentInstanceOfType(ConfigurationManager.class))
+      {
+         @Override
+         protected void configureStateTransfer(ConfigurationBuilder confBuilder)
+         {
+            super.configureStateTransfer(confBuilder);
+            if (stateTransferTimeout != null)
+            {
+               // The state-transfer timeout may not be lower than the remote timeout
+               confBuilder.clustering().remoteTimeout(stateTransferTimeout).stateTransfer().timeout(stateTransferTimeout);
+            }
+         }
+      };
    }
 }

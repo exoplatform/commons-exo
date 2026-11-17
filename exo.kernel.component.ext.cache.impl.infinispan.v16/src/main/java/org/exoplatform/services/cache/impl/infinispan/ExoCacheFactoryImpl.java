@@ -32,6 +32,8 @@ import org.exoplatform.services.ispn.Utils;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.infinispan.Cache;
+import org.infinispan.commons.CacheException;
+import org.infinispan.commons.TimeoutException;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -45,6 +47,7 @@ import org.picocontainer.Startable;
 
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -68,13 +71,19 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    private static final Log LOG = ExoLogger.getLogger(ExoCacheFactoryImpl.class);
 
    /**
-    * The initial parameter key that defines the full path of the configuration template
-    */
-   /**
     * Set to {@code false} to start a replicated cache built from a template without waiting for its peers' entries.
     */
    public static final String REPLICATED_STATE_TRANSFER = "exo.cache.cluster.replication.statetransfer";
 
+   /**
+    * The message id of the timeout Infinispan raises when the initial state transfer of a cache outlasts its
+    * state-transfer timeout.
+    */
+   static final String INITIAL_STATE_TRANSFER_TIMEOUT = "ISPN000658:";
+
+   /**
+    * The initial parameter key that defines the full path of the configuration template
+    */
    private static final String CACHE_CONFIG_TEMPLATE_KEY = "cache.config.template";
 
    /**
@@ -332,7 +341,18 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
             {
                cacheManager.defineConfiguration(region, confBuilder.build());
                // create and start the cache
-               return cacheManager.getCache(region);
+               try
+               {
+                  return cacheManager.getCache(region);
+               }
+               catch (CacheException e)
+               {
+                  if (!isStateTransferTimeout(e))
+                  {
+                     throw e;
+                  }
+                  return startWithoutWaitingForStateTransfer(cacheManager, region, confBuilder, e);
+               }
             }
          });
       }
@@ -341,6 +361,49 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
          throw new ExoCacheInitException("The cache '" + region + "' could not be initialized", e);
       }
       return eXoCache;
+   }
+
+   /**
+    * Tells the timeout of the initial state transfer (Infinispan's {@code ISPN000658}) from any other timeout of a
+    * cache start, such as the join request of the node timing out ({@code ISPN000476}): starting the region again
+    * without waiting for the transfer would join again, and is no remedy for a node that the cluster does not answer.
+    */
+   static boolean isStateTransferTimeout(Throwable e)
+   {
+      for (Throwable t = e; t != null; t = t.getCause())
+      {
+         if (t instanceof TimeoutException && t.getMessage() != null
+            && t.getMessage().startsWith(INITIAL_STATE_TRANSFER_TIMEOUT))
+         {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   /**
+    * The initial state transfer of a region did not complete within the state-transfer timeout, and Infinispan stopped
+    * the cache it was starting, which left the cluster with it and abandoned that transfer. The region is started
+    * again from a new definition that does not wait for its transfer: the restarted cache joins again and a new
+    * transfer fills it in the background. The cache manager forgets the failed start of a region at its next
+    * {@code getCache} (it removes the failed future and creates the cache again), and
+    * {@code undefineConfiguration} accepts the old definition because no running cache uses it. Left as it is, the
+    * kernel's cache service would keep the failed task and return no cache for this region until the node restarts.
+    */
+   private Cache<Serializable, Object> startWithoutWaitingForStateTransfer(DefaultCacheManager cacheManager,
+                                                                           String region,
+                                                                           ConfigurationBuilder confBuilder,
+                                                                           CacheException cause)
+   {
+      LOG.warn("The initial state transfer of the cache '{}' did not complete within the state-transfer timeout ({} ms):"
+         + " the cache starts again without the entries of the other nodes, which a new transfer fills in the background.",
+               region,
+               confBuilder.build().clustering().stateTransfer().timeout(),
+               cause);
+      cacheManager.undefineConfiguration(region);
+      confBuilder.clustering().stateTransfer().awaitInitialTransfer(false);
+      cacheManager.defineConfiguration(region, confBuilder.build());
+      return cacheManager.getCache(region);
    }
 
    /**
@@ -426,15 +489,31 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    }
 
    /**
-    * Stops every cache manager of the factory, the asynchronous and custom ones being mapped to their cluster names, so
-    * that each releases its channel, a fork of the channel the node shares in cluster mode.
+    * Stops every cache manager of the factory, the main one first, the asynchronous and custom ones being mapped to
+    * their cluster names, so that each releases its channel, a fork of the channel the node shares in cluster mode. A
+    * manager that fails to stop does not keep the others running; the shared channel closes with its last fork, so it
+    * stays open when the failing manager threw before it closed its own.
     */
    @Override
    public void stop() {
      Set<DefaultCacheManager> cacheManagers = Collections.newSetFromMap(new IdentityHashMap<>());
-     cacheManagers.add(cacheManager);
-     cacheManagers.addAll(mappingGlobalConfigCacheManager.values());
-     cacheManagers.forEach(DefaultCacheManager::stop);
+     List<DefaultCacheManager> stopOrder = new ArrayList<>();
+     if (cacheManager != null && cacheManagers.add(cacheManager)) {
+       stopOrder.add(cacheManager);
+     }
+     for (DefaultCacheManager manager : mappingGlobalConfigCacheManager.values()) {
+       if (cacheManagers.add(manager)) {
+         stopOrder.add(manager);
+       }
+     }
+     for (DefaultCacheManager manager : stopOrder) {
+       try {
+         manager.stop();
+       } catch (RuntimeException e) { // NOSONAR
+         LOG.warn("The cache manager " + manager.getCacheManagerConfiguration().cacheManagerName()
+             + " could not be stopped, the other cache managers are stopped", e);
+       }
+     }
    }
    /**
     * Returns the value of the ValueParam if and only if the value is not empty
@@ -484,9 +563,11 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
     * cluster templates do not transfer it by default, and a cache invalidated rather than replicated holds data that
     * each node loads from its store, which a transfer would only copy for nothing.
     * <p>
-    * The node waits for the transfer up to the template's state-transfer timeout, beyond which the cache does not
-    * start. {@link #REPLICATED_STATE_TRANSFER} set to {@code false} keeps the template instead: the cache starts at
-    * once, empty.
+    * The node waits for the transfer up to the template's state-transfer timeout, beyond which the cache starts
+    * again without the transferred entries, with a warning, and a new transfer fills it in the background. This
+    * holds for a cache mapped to a custom configuration too.
+    * {@link #REPLICATED_STATE_TRANSFER} set to {@code false} keeps the template instead: the cache starts at once,
+    * empty.
     * @param confBuilder the configuration of a replicated cache
     */
    protected void configureStateTransfer(ConfigurationBuilder confBuilder)
