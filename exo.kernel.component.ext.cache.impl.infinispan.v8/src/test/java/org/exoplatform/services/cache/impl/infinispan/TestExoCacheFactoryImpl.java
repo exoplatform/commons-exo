@@ -20,12 +20,19 @@ package org.exoplatform.services.cache.impl.infinispan;
 
 import junit.framework.TestCase;
 
+import java.lang.reflect.Field;
+
+import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
+import org.exoplatform.container.configuration.ConfigurationManager;
 import org.exoplatform.services.cache.CacheService;
 import org.exoplatform.services.cache.ExoCache;
+import org.exoplatform.services.cache.ExoCacheConfig;
 import org.exoplatform.services.cache.impl.infinispan.TestExoCacheCreator.TestExoCache;
 import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.lifecycle.ComponentStatus;
 import org.infinispan.manager.CacheContainer;
+import org.infinispan.manager.DefaultCacheManager;
 
 /**
  * @author <a href="mailto:nicolas.filotto@exoplatform.com">Nicolas Filotto</a>
@@ -103,5 +110,74 @@ public class TestExoCacheFactoryImpl extends TestCase
 
       aCache1.cache.stop();
       aCache2.cache.stop();
+   }
+
+   public void testTheAsyncCacheManagerStopsWithTheFactory() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, template,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class), null);
+      // An asynchronous cache makes the factory create its asynchronous cache manager
+      ExoCacheConfig config = new ExoCacheConfig()
+      {
+         @Override
+         public boolean isAsync()
+         {
+            return true;
+         }
+      };
+      config.setName("anAsyncCache");
+      config.setMaxSize(10);
+      factory.createCache(config);
+      Field field = ExoCacheFactoryImpl.class.getDeclaredField("asyncCacheManager");
+      field.setAccessible(true);
+      DefaultCacheManager asyncCacheManager = (DefaultCacheManager)field.get(factory);
+      assertEquals(ComponentStatus.RUNNING, asyncCacheManager.getStatus());
+
+      factory.stop();
+
+      assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+   }
+
+   public void testACacheManagerThatFailsToStopDoesNotKeepTheOthersRunning() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, template,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class), null);
+      ExoCacheConfig config = new ExoCacheConfig()
+      {
+         @Override
+         public boolean isAsync()
+         {
+            return true;
+         }
+      };
+      config.setName("anotherAsyncCache");
+      config.setMaxSize(10);
+      factory.createCache(config);
+      Field mainField = ExoCacheFactoryImpl.class.getDeclaredField("cacheManager");
+      mainField.setAccessible(true);
+      DefaultCacheManager mainCacheManager = (DefaultCacheManager)mainField.get(factory);
+      // The main cache manager, stopped first, fails to stop
+      mainField.set(factory, new DefaultCacheManager(false)
+      {
+         @Override
+         public void stop()
+         {
+            throw new IllegalStateException("Cannot stop");
+         }
+      });
+      Field asyncField = ExoCacheFactoryImpl.class.getDeclaredField("asyncCacheManager");
+      asyncField.setAccessible(true);
+      DefaultCacheManager asyncCacheManager = (DefaultCacheManager)asyncField.get(factory);
+
+      factory.stop();
+
+      assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+      mainCacheManager.stop();
    }
 }
