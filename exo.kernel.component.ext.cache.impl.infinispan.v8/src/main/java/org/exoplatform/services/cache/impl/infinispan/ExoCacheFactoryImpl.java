@@ -79,7 +79,7 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    private static final Log LOG = ExoLogger.getLogger(ExoCacheFactoryImpl.class);
 
    /**
-    * Set to {@code false} to start a replicated cache built from a template without waiting for its peers' entries.
+    * Set to {@code false} to start a replicated cache built from a template empty, with no state transfer.
     */
    public static final String REPLICATED_STATE_TRANSFER = "exo.cache.cluster.replication.statetransfer";
 
@@ -529,6 +529,11 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
     * disabled, since the node does not become a reader then. Past the timeout a warning names the region, and the
     * cache is served while the transfer goes on: a read of an entry not received yet is fetched from another node,
     * and the local size and listings miss those entries until the transfer ends.
+    * <p>
+    * The wait runs on the thread that creates the cache, which the cache service does at the first lookup of the
+    * region: often a request thread, a code sign-in for {@code otp.tentatives}. While a peer does not answer, that
+    * request waits up to {@code exo.cache.cluster.statetransfer.timeout} (240 s in the cluster templates), and so does
+    * every other request that looks the region up meanwhile.
     * @param region the name of the cache
     * @param cache the started cache
     * @return {@code true} when the transfer completed within the timeout, or the cache transfers nothing
