@@ -491,8 +491,8 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
    /**
     * Stops every cache manager of the factory, the main one first, the asynchronous and custom ones being mapped to
     * their cluster names, so that each releases its channel, a fork of the channel the node shares in cluster mode. A
-    * manager that fails to stop does not keep the others running, nor the shared channel, which closes with its last
-    * fork.
+    * manager that fails to stop does not keep the others running; the shared channel closes with its last fork, so it
+    * stays open when the failing manager threw before it closed its own.
     */
    @Override
    public void stop() {
