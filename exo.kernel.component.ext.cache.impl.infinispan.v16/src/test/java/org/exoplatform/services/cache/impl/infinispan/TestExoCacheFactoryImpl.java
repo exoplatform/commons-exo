@@ -127,6 +127,35 @@ public class TestExoCacheFactoryImpl extends TestCase
       assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
    }
 
+   public void testACacheManagerThatFailsToStopDoesNotKeepTheOthersRunning() throws Exception
+   {
+      PortalContainer container = PortalContainer.getInstance();
+      String template = "jar:/conf/cache/infinispan/local/cache-config.xml";
+      ExoCacheFactoryImpl factory =
+         new ExoCacheFactoryImpl(container.getComponentInstanceOfType(ExoContainerContext.class), template, template,
+                                 container.getComponentInstanceOfType(ConfigurationManager.class));
+      Field mainField = ExoCacheFactoryImpl.class.getDeclaredField("cacheManager");
+      mainField.setAccessible(true);
+      DefaultCacheManager mainCacheManager = (DefaultCacheManager)mainField.get(factory);
+      // The main cache manager, stopped first, fails to stop
+      mainField.set(factory, new DefaultCacheManager(false)
+      {
+         @Override
+         public void stop()
+         {
+            throw new IllegalStateException("Cannot stop");
+         }
+      });
+      Field asyncField = ExoCacheFactoryImpl.class.getDeclaredField("asyncCacheManager");
+      asyncField.setAccessible(true);
+      DefaultCacheManager asyncCacheManager = (DefaultCacheManager)asyncField.get(factory);
+
+      factory.stop();
+
+      assertEquals(ComponentStatus.TERMINATED, asyncCacheManager.getStatus());
+      mainCacheManager.stop();
+   }
+
    public void testACacheConfiguredByItsModeOnlyIsInvalidatedOverAnAsyncReplicatedCache() throws Exception
    {
       PortalContainer container = PortalContainer.getInstance();
