@@ -53,7 +53,10 @@ import org.picocontainer.Startable;
 
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -452,10 +455,30 @@ public class ExoCacheFactoryImpl implements ExoCacheFactory, Startable {
      // Nothing to start
    }
 
+   /**
+    * Stops every cache manager of the factory, the main one first, the asynchronous and custom ones being mapped to
+    * their cluster names, so that each closes its channel and releases its share of the transport the node shares in
+    * cluster mode. A manager that fails to stop does not keep the others running.
+    */
    @Override
    public void stop() {
-     if (cacheManager != null) {
-       cacheManager.stop();
+     Set<DefaultCacheManager> cacheManagers = Collections.newSetFromMap(new IdentityHashMap<>());
+     List<DefaultCacheManager> stopOrder = new ArrayList<>();
+     if (cacheManager != null && cacheManagers.add(cacheManager)) {
+       stopOrder.add(cacheManager);
+     }
+     for (DefaultCacheManager manager : mappingGlobalConfigCacheManager.values()) {
+       if (cacheManagers.add(manager)) {
+         stopOrder.add(manager);
+       }
+     }
+     for (DefaultCacheManager manager : stopOrder) {
+       try {
+         manager.stop();
+       } catch (RuntimeException e) { // NOSONAR
+         LOG.warn("The cache manager " + manager.getCacheManagerConfiguration().globalJmxStatistics().cacheManagerName()
+             + " could not be stopped, the other cache managers are stopped", e);
+       }
      }
    }
    /**
