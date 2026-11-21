@@ -16,14 +16,14 @@
  */
 package org.exoplatform.services.connector.credentials;
 
-import javax.mail.Authenticator;
+import jakarta.mail.Authenticator;
 
 /**
  * Material for the {@link ConnectorCredentialsChannel#IMAP} and {@link ConnectorCredentialsChannel#SMTP} channels:
- * a javax.mail {@link Authenticator} already configured with whatever credentials
+ * a jakarta.mail {@link Authenticator} already configured with whatever credentials
  * the provider produced (a user's own password, a technical account's SASL PLAIN
  * authzid, a BlueMind sudo session id used as the password...). The connector plugs
- * it straight into its javax.mail {@code Session} - it never inspects what is inside.
+ * it straight into its jakarta.mail {@code Session} - it never inspects what is inside.
  */
 public class MailConnectorCredentials extends ConnectorCredentials {
 
