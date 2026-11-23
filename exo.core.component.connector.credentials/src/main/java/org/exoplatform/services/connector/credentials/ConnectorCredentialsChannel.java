@@ -18,7 +18,7 @@ package org.exoplatform.services.connector.credentials;
 
 /**
  * A channel an {@link ConnectorCredentialsProvider} can produce ready-to-use material for.
- * IMAP and SMTP share the same javax.mail material shape ({@link MailConnectorCredentials});
+ * IMAP and SMTP share the same jakarta.mail material shape ({@link MailConnectorCredentials});
  * HTTP covers CalDAV/CardDAV ({@link HttpConnectorCredentials}).
  */
 public enum ConnectorCredentialsChannel {

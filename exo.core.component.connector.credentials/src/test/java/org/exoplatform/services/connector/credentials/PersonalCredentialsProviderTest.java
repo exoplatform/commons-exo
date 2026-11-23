@@ -27,8 +27,8 @@ import java.lang.reflect.Method;
 import java.util.Base64;
 import java.util.Set;
 
-import javax.mail.Authenticator;
-import javax.mail.PasswordAuthentication;
+import jakarta.mail.Authenticator;
+import jakarta.mail.PasswordAuthentication;
 
 import org.junit.jupiter.api.Test;
 
